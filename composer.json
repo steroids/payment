@@ -1,0 +1,12 @@
+{
+    "name": "steroids/payment",
+    "description": "",
+    "license": "MIT",
+    "require": {
+        "php": ">=7.4",
+        "steroids/core": "*"
+    },
+    "autoload": {
+        "psr-4": {"steroids\\payment\\": ""}
+    }
+}
