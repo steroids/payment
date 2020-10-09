@@ -15,6 +15,7 @@ use steroids\payment\operations\PaymentChargeOperation;
 use steroids\payment\structure\PaymentProcess;
 use yii\helpers\ArrayHelper;
 use yii\validators\RequiredValidator;
+use yii\web\IdentityInterface;
 
 /**
  * Class PaymentStartForm
@@ -31,7 +32,10 @@ class PaymentStartForm extends PaymentStartFormMeta
 
     public string $direction;
 
-    public UserInterface $user;
+    /**
+     * @var UserInterface|IdentityInterface
+     */
+    public $user;
 
     public ?RequestInfo $request = null;
 
@@ -44,6 +48,17 @@ class PaymentStartForm extends PaymentStartFormMeta
     public ?string $redirectUrl = null;
 
     private ?BillingAccount $_account = null;
+
+    public function fields()
+    {
+        return [
+            'order' => [
+                'id',
+                'status',
+            ],
+            'url' => fn () => (string)$this->process->request,
+        ];
+    }
 
     /**
      * @inheritDoc
@@ -78,9 +93,12 @@ class PaymentStartForm extends PaymentStartFormMeta
     public function execute()
     {
         if ($this->validate()) {
+            // Amount
+            $inAmount = $this->account->currency->amountToInt($this->inAmount);
+
             // Create order
             $this->order = $this->method
-                ->createOrder($this->account, $this->inAmount, array_merge(
+                ->createOrder($this->account, $inAmount, array_merge(
                     $this->attributes,
                     [
                         'description' => $this->description,
@@ -95,7 +113,7 @@ class PaymentStartForm extends PaymentStartFormMeta
                     new PaymentChargeOperation([
                         'fromAccount' => $this->method->systemAccount,
                         'toAccount' => $this->account,
-                        'amount' => $this->inAmount,
+                        'amount' => $inAmount,
                         'document' => $this->order,
                     ])
                 );
@@ -105,7 +123,7 @@ class PaymentStartForm extends PaymentStartFormMeta
                     new PaymentChargeOperation([
                         'fromAccount' => $this->account,
                         'toAccount' => $this->method->systemAccount,
-                        'amount' => $this->inAmount,
+                        'amount' => $inAmount,
                         'document' => $this->order,
                     ])
                 );*/

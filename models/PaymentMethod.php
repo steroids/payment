@@ -3,6 +3,7 @@
 namespace steroids\payment\models;
 
 use steroids\billing\models\BillingAccount;
+use steroids\billing\models\BillingCurrency;
 use steroids\payment\exceptions\PaymentException;
 use steroids\payment\models\meta\PaymentMethodMeta;
 use steroids\payment\PaymentModule;
@@ -27,21 +28,29 @@ class PaymentMethod extends PaymentMethodMeta
      */
     public static function getByName($name)
     {
-        // Lazy load
-        if (!static::$_instances) {
-            static::$_instances = [];
-            foreach (static::find()->where(['isEnable' => true])->all() as $method) {
-                /** @var static $method */
-                static::$_instances[$method->name] = $method;
-            }
-        }
+        // Lazy fetch
+        static::getAll();
 
-        // Check exists
-        if (!isset(static::$_instances[$name])) {
+        $model = ArrayHelper::getValue(static::$_instances, $name);
+        if (!$model) {
             throw new PaymentException('Not found method by name: ' . $name);
         }
 
-        return static::$_instances[$name];
+        return $model;
+    }
+
+    /**
+     * @return BillingCurrency[]
+     */
+    public static function getAll()
+    {
+        if (!static::$_instances) {
+            static::$_instances = static::find()
+                ->where(['isEnable' => true])
+                ->indexBy('name')
+                ->all();
+        }
+        return array_values(static::$_instances);
     }
 
     /**

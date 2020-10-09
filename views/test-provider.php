@@ -42,7 +42,14 @@ use steroids\payment\models\PaymentOrder;
                     <?= $order->description ?: 'Пополнение счета' ?>
                 </p>
                 <p class="mb-1">
-                    Сумма: <?= $order->outCurrency->format($order->outAmount) ?>
+                    Сумма: <?= $order->inCurrency->format($order->inAmount) ?>
+                </p>
+                <p class="mb-1">
+                    Комиссия: <?= $order->outCurrency->format($order->outCommissionFixed) ?> +
+                    <?= $order->outCommissionPercent ?>%
+                </p>
+                <p class="mb-1">
+                    ИТОГО: <?= $order->outCurrency->format($order->outAmount) ?>
                 </p>
                 <p class="mb-1">
                     Статус: <?= PaymentStatus::getLabel($order->status) ?>

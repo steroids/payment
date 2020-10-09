@@ -13,7 +13,7 @@ use steroids\payment\structure\PaymentProcess;
  * Class ManualTestProvider
  * @package steroids\payment\providers
  */
-class ManualTestProvider extends BaseProvider
+class TestProvider extends BaseProvider
 {
     /**
      * @inheritDoc
@@ -22,7 +22,7 @@ class ManualTestProvider extends BaseProvider
     {
         return new PaymentProcess([
             'request' => new RequestInfo([
-                'url' => Url::to(['/payment/payment/test']),
+                'url' => Url::to(['/payment/payment/test'], true),
                 'params' => [
                     'orderId' => $order->getId(),
                 ]

@@ -23,6 +23,7 @@ use steroids\billing\models\BillingAccount;
  * @property string $name
  * @property string $outCurrencyCode
  * @property integer $systemAccountId
+ * @property string $title
  * @property-read BillingCurrency $outCurrency
  * @property-read PaymentMethodParam[] $params
  * @property-read BillingAccount $systemAccount
@@ -44,7 +45,7 @@ abstract class PaymentMethodMeta extends Model
     {
         return [
             ...parent::rules(),
-            [['providerName', 'name', 'outCurrencyCode'], 'string', 'max' => 255],
+            [['providerName', 'name', 'outCurrencyCode', 'title'], 'string', 'max' => 255],
             ['direction', 'in', 'range' => PaymentDirection::getKeys()],
             [['outCommissionFixed', 'outCommissionPercent', 'systemAccountId'], 'integer'],
             ['isEnable', 'steroids\\core\\validators\\ExtBooleanValidator'],
@@ -139,6 +140,10 @@ abstract class PaymentMethodMeta extends Model
             'systemAccountId' => [
                 'label' => Yii::t('steroids', 'Системный аккаунт для списания'),
                 'appType' => 'integer',
+                'isPublishToFrontend' => false
+            ],
+            'title' => [
+                'label' => Yii::t('steroids', 'Название'),
                 'isPublishToFrontend' => false
             ]
         ]);

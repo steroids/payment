@@ -9,7 +9,7 @@ use steroids\payment\models\PaymentMethodParam;
 use steroids\payment\models\PaymentOrder;
 use steroids\payment\models\PaymentOrderItem;
 use steroids\payment\models\PaymentProviderLog;
-use steroids\payment\providers\ManualTestProvider;
+use steroids\payment\providers\TestProvider;
 use steroids\payment\providers\PayInPayOutProvider;
 use steroids\payment\providers\PayPalProvider;
 use steroids\payment\providers\RobokassaProvider;
@@ -28,7 +28,7 @@ class PaymentModule extends Module
 {
     use ModuleProvidersTrait;
 
-    const PROVIDER_MANUAL_TEST = 'manualTest';
+    const PROVIDER_TEST = 'test';
 
     /**
      * @event ProcessEvent
@@ -63,7 +63,7 @@ class PaymentModule extends Module
         ], $this->classesMap);
 
         $this->providersClasses = array_merge([
-            'manualTest' => ManualTestProvider::class,
+            'test' => TestProvider::class,
             'payInPayOut' => PayInPayOutProvider::class,
             'payPal' => PayPalProvider::class,
             'robokassa' => RobokassaProvider::class,

@@ -11,10 +11,7 @@ use steroids\payment\models\PaymentMethod;
 use steroids\payment\models\PaymentOrder;
 use steroids\payment\PaymentModule;
 use steroids\payment\providers\BaseProvider;
-use yii\base\InvalidArgumentException;
 use yii\base\InvalidConfigException;
-use yii\helpers\ArrayHelper;
-use yii\helpers\Html;
 use yii\web\Controller;
 use yii\web\Response;
 
@@ -25,6 +22,9 @@ class PaymentController extends Controller
      */
     public $enableCsrfValidation = false;
 
+    /**
+     * @return array
+     */
     public static function apiMap()
     {
         return [
@@ -36,6 +36,9 @@ class PaymentController extends Controller
         ];
     }
 
+    /**
+     * @return array
+     */
     public static function siteMap()
     {
         return [
@@ -56,9 +59,11 @@ class PaymentController extends Controller
     public function actionCharge()
     {
         $model = new PaymentStartForm();
+        $model->user = \Yii::$app->user->identity;
         $model->direction = PaymentDirection::CHARGE;
         $model->description = \Yii::t('steroids', 'Пополнение счета');
         $model->load(\Yii::$app->request->post());
+        $model->execute();
         return $model;
     }
 
@@ -74,7 +79,7 @@ class PaymentController extends Controller
     public function actionTest(string $orderId)
     {
         $order = PaymentOrder::findOrPanic(['id' => (int)$orderId]);
-        if ($order->method->providerName !== PaymentModule::PROVIDER_MANUAL_TEST) {
+        if ($order->method->providerName !== PaymentModule::PROVIDER_TEST) {
             throw new PaymentException('Incorrect order provider! Test area support only manual test provider.');
         }
 
@@ -179,8 +184,8 @@ class PaymentController extends Controller
         // Add status and error
         $redirectUrl .= (strpos($redirectUrl, '?') === false ? '?' : '&');
         $redirectUrl .= http_build_query(array_filter([
-            'status' => $status,
-            'error' => $status === PaymentStatus::FAILURE
+            'paymentStatus' => $status,
+            'paymentError' => $status === PaymentStatus::FAILURE
                 ? $provider->resolveErrorMessage($request)
                 : null,
         ]));
