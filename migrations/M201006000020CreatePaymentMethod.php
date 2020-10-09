@@ -1,6 +1,6 @@
 <?php
 
-namespace app\payment\migrations;
+namespace steroids\payment\migrations;
 
 use steroids\core\base\Migration;
 
@@ -14,9 +14,9 @@ class M201006000020CreatePaymentMethod extends Migration
             'direction' => $this->string(),
             'outCommissionFixed' => $this->bigInteger(),
             'outCommissionPercent' => $this->integer(),
-            'isEnable' => $this->boolean()->notNull()->defaultValue(0),
+            'isEnable' => $this->boolean()->notNull()->defaultValue(false),
             'name' => $this->string(),
-            'outCurrencyCode' => $this->string(),
+            'outCurrencyCode' => $this->string(32)->notNull(),
             'createTime' => $this->dateTime(),
             'updateTime' => $this->dateTime(),
             'systemAccountId' => $this->integer(),
@@ -27,7 +27,7 @@ class M201006000020CreatePaymentMethod extends Migration
             'name' => $this->string()->notNull(),
             'type' => $this->string(),
             'typeValues' => $this->text(),
-            'isRequired' => $this->boolean()->notNull()->defaultValue(0),
+            'isRequired' => $this->boolean()->notNull()->defaultValue(false),
             'min' => $this->integer(),
             'max' => $this->integer(),
             'label' => $this->string(),

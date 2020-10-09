@@ -12,19 +12,19 @@ class PaymentProcess extends BaseObject
      * операции (состояние WAIT_VERIFICATION), для получения формы инициализации платежа, чтобы передать ее в браузер.
      * @var RequestInfo
      */
-    public RequestInfo $request;
+    public ?RequestInfo $request = null;
 
     /**
      * Результат изменения состояния
      * @var string
      */
-    public string $newStatus;
+    public ?string $newStatus = null;
 
     /**
      * Строка (обычно это текст, xml или json), которую необходимо передать платёжной системе. Как правило, возвращается
      * как ответ при проверке статуса или завершения транзакции.
      * @var string
      */
-    public string $responseText;
+    public ?string $responseText = null;
 
 }

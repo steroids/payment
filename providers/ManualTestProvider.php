@@ -39,9 +39,13 @@ class ManualTestProvider extends BaseProvider
         $order->setExternalId(time());
         $order->setProviderParam('time', time());
 
+        $isOk = isset($request->params['success']);
+        if (!$isOk) {
+            $order->setErrorMessage('Произошла непредвиденная ошибка.');
+        }
         return new PaymentProcess([
-            'newStatus' => PaymentStatus::SUCCESS,
-            'responseText' => 'ok',
+            'newStatus' => $isOk ? PaymentStatus::SUCCESS : PaymentStatus::FAILURE,
+            'responseText' => $isOk ? 'ok' : 'error',
         ]);
     }
 

@@ -32,6 +32,11 @@ interface PaymentOrderInterface
     public function setExternalId(string $value);
 
     /**
+     * @param string $value
+     */
+    public function setErrorMessage(string $value);
+
+    /**
      * @param string $message
      */
     public function log(string $message);

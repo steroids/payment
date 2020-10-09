@@ -12,7 +12,6 @@ use steroids\payment\forms\meta\PaymentStartFormMeta;
 use steroids\payment\models\PaymentMethod;
 use steroids\payment\models\PaymentOrder;
 use steroids\payment\operations\PaymentChargeOperation;
-use steroids\payment\operations\PaymentWithdrawOperation;
 use steroids\payment\structure\PaymentProcess;
 use yii\helpers\ArrayHelper;
 use yii\validators\RequiredValidator;
@@ -34,17 +33,17 @@ class PaymentStartForm extends PaymentStartFormMeta
 
     public UserInterface $user;
 
-    public ?RequestInfo $request;
+    public ?RequestInfo $request = null;
 
-    public ?PaymentOrder $order;
+    public ?PaymentOrder $order = null;
 
-    public ?PaymentProcess $process;
+    public ?PaymentProcess $process = null;
 
     public ?string $description = null;
 
     public ?string $redirectUrl = null;
 
-    private ?BillingAccount $_account;
+    private ?BillingAccount $_account = null;
 
     /**
      * @inheritDoc
@@ -56,7 +55,7 @@ class PaymentStartForm extends PaymentStartFormMeta
         return [
             ...parent::rules(),
             ['currencyCode', function ($attribute) {
-                if (BillingCurrency::getByCode($this->currencyCode)) {
+                if (!BillingCurrency::getByCode($this->currencyCode)) {
                     $this->addError($attribute, \Yii::t('steroids', 'Валюта не найдена'));
                 }
             }],
@@ -97,6 +96,7 @@ class PaymentStartForm extends PaymentStartFormMeta
                         'fromAccount' => $this->method->systemAccount,
                         'toAccount' => $this->account,
                         'amount' => $this->inAmount,
+                        'document' => $this->order,
                     ])
                 );
             } else {
@@ -106,6 +106,7 @@ class PaymentStartForm extends PaymentStartFormMeta
                         'fromAccount' => $this->account,
                         'toAccount' => $this->method->systemAccount,
                         'amount' => $this->inAmount,
+                        'document' => $this->order,
                     ])
                 );*/
             }

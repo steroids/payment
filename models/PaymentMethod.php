@@ -63,7 +63,7 @@ class PaymentMethod extends PaymentMethodMeta
             'inCurrencyCode' => $toAccount->currency->code,
             'description' => $description,
             'redirectUrl' => $redirectUrl,
-            'creatorUserId' => \Yii::$app->has('user') ? \Yii::$app->user->id : null,
+            'creatorUserId' => !STEROIDS_IS_CLI && \Yii::$app->has('user') ? \Yii::$app->user->id : null,
             'outCurrencyCode' => $this->outCurrencyCode,
             'outCommissionFixed' => $this->outCommissionFixed,
             'outCommissionPercent' => $this->outCommissionPercent,

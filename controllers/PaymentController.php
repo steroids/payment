@@ -5,11 +5,13 @@ namespace steroids\payment\controllers;
 use steroids\core\structure\RequestInfo;
 use steroids\payment\enums\PaymentDirection;
 use steroids\payment\enums\PaymentStatus;
+use steroids\payment\exceptions\PaymentException;
 use steroids\payment\forms\PaymentStartForm;
 use steroids\payment\models\PaymentMethod;
 use steroids\payment\models\PaymentOrder;
 use steroids\payment\PaymentModule;
 use steroids\payment\providers\BaseProvider;
+use yii\base\InvalidArgumentException;
 use yii\base\InvalidConfigException;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
@@ -55,8 +57,39 @@ class PaymentController extends Controller
     {
         $model = new PaymentStartForm();
         $model->direction = PaymentDirection::CHARGE;
+        $model->description = \Yii::t('steroids', 'Пополнение счета');
         $model->load(\Yii::$app->request->post());
         return $model;
+    }
+
+    /**
+     * @param string $orderId
+     * @return string|Response
+     * @throws InvalidConfigException
+     * @throws PaymentException
+     * @throws \steroids\core\exceptions\ModelSaveException
+     * @throws \yii\base\Exception
+     * @throws \yii\web\NotFoundHttpException
+     */
+    public function actionTest(string $orderId)
+    {
+        $order = PaymentOrder::findOrPanic(['id' => (int)$orderId]);
+        if ($order->method->providerName !== PaymentModule::PROVIDER_MANUAL_TEST) {
+            throw new PaymentException('Incorrect order provider! Test area support only manual test provider.');
+        }
+
+        if (\Yii::$app->request->isPost) {
+            $this->actionCallback($order->method->name);
+            if (\Yii::$app->request->post(PaymentStatus::SUCCESS) !== null) {
+                return $this->actionSuccess($order->method->name);
+            } else {
+                return $this->actionFailure($order->method->name);
+            }
+        }
+
+        return $this->renderFile(dirname(__DIR__) . '/views/test-provider.php', [
+            'order' => $order,
+        ]);
     }
 
     /**

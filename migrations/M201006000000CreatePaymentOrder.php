@@ -1,6 +1,6 @@
 <?php
 
-namespace app\payment\migrations;
+namespace steroids\payment\migrations;
 
 use steroids\core\base\Migration;
 
@@ -18,11 +18,11 @@ class M201006000000CreatePaymentOrder extends Migration
             'providerParamsJson' => $this->text(),
             'externalId' => $this->string(),
             'inAmount' => $this->bigInteger(),
-            'inCurrencyCode' => $this->string(),
-            'commissionFixed' => $this->bigInteger(),
-            'commissionPercent' => $this->integer(),
+            'inCurrencyCode' => $this->string(32)->notNull(),
+            'outCommissionFixed' => $this->bigInteger(),
+            'outCommissionPercent' => $this->integer(),
             'outAmount' => $this->bigInteger(),
-            'outCurrencyCode' => $this->integer(),
+            'outCurrencyCode' => $this->string(32)->notNull(),
             'status' => $this->string(),
             'redirectUrl' => $this->text(),
             'createTime' => $this->dateTime(),

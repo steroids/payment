@@ -28,6 +28,8 @@ class PaymentModule extends Module
 {
     use ModuleProvidersTrait;
 
+    const PROVIDER_MANUAL_TEST = 'manualTest';
+
     /**
      * @event ProcessEvent
      */

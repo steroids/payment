@@ -27,7 +27,7 @@ use yii\helpers\Json;
  */
 class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
 {
-    private ?array $_providerParams;
+    private ?array $_providerParams = null;
 
     /**
      * @inheritDoc
@@ -52,7 +52,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
     {
         return [
             ...parent::rules(),
-            [['uid', 'providerParamsJson', 'externalId', 'outAmount', 'status'], '!safe'],
+            [['!uid', '!providerParamsJson', '!externalId', '!outAmount', '!status'], 'safe'],
             ['status', 'default', 'value' => PaymentStatus::CREATED],
         ];
     }
@@ -81,7 +81,12 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
      */
     public function start(RequestInfo $request)
     {
-        return $this->callProvider('start', $request);
+        $process = $this->callProvider('start', $request);
+
+        $this->status = PaymentStatus::PROCESS;
+        $this->saveOrPanic();
+
+        return $process;
     }
 
     /**
@@ -261,9 +266,14 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         $this->providerParamsJson = !empty($this->_providerParams) ? Json::encode($this->_providerParams) : null;
     }
 
-    public function setExternalId($value)
+    public function setExternalId(string $value)
     {
         $this->externalId = $value;
+    }
+
+    public function setErrorMessage(string $value)
+    {
+        $this->errorMessage = $value;
     }
 
     /**
@@ -284,7 +294,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
             $outAmount = BillingCurrency::convert($this->inCurrencyCode, $this->outCurrencyCode, $this->inAmount);
             $outAmount = $outAmount * (1 + ($this->outCommissionPercent / 100));
             $outAmount = $outAmount + $this->outCommissionFixed;
-            $this->outAmount = $outAmount;
+            $this->outAmount = ceil($outAmount);
         }
 
         return parent::beforeSave($insert);

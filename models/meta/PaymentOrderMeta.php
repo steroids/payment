@@ -25,7 +25,7 @@ use steroids\payment\models\PaymentOrderItem;
  * @property integer $outCommissionFixed
  * @property integer $outCommissionPercent
  * @property integer $outAmount
- * @property integer $outCurrencyCode
+ * @property string $outCurrencyCode
  * @property string $status
  * @property string $redirectUrl
  * @property string $createTime
@@ -55,8 +55,8 @@ abstract class PaymentOrderMeta extends Model
         return [
             ...parent::rules(),
             ['uid', 'string', 'max' => '36'],
-            [['description', 'externalId', 'inCurrencyCode', 'errorMessage'], 'string', 'max' => 255],
-            [['methodId', 'creatorUserId', 'payerAccountId', 'inAmount', 'outCommissionFixed', 'outCommissionPercent', 'outAmount', 'outCurrencyCode'], 'integer'],
+            [['description', 'externalId', 'inCurrencyCode', 'outCurrencyCode', 'errorMessage'], 'string', 'max' => 255],
+            [['methodId', 'creatorUserId', 'payerAccountId', 'inAmount', 'outCommissionFixed', 'outCommissionPercent', 'outAmount'], 'integer'],
             [['providerParamsJson', 'redirectUrl', 'methodParamsJson'], 'string'],
             ['status', 'in', 'range' => PaymentStatus::getKeys()],
         ];
@@ -169,7 +169,6 @@ abstract class PaymentOrderMeta extends Model
             ],
             'outCurrencyCode' => [
                 'label' => Yii::t('steroids', 'Валюта платежного шлюза'),
-                'appType' => 'integer',
                 'isPublishToFrontend' => false
             ],
             'status' => [
