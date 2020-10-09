@@ -27,6 +27,7 @@ class TinkoffProvider extends BaseProvider
     public $password;
 
     /**
+     * See API: https://oplata.tinkoff.ru/develop/api/payments/init-description/
      * @inheritDoc
      */
     public function start(PaymentOrderInterface $order, RequestInfo $request)
@@ -54,6 +55,7 @@ class TinkoffProvider extends BaseProvider
     }
 
     /**
+     * See API: https://oplata.tinkoff.ru/develop/api/notifications/
      * @inheritDoc
      */
     public function callback(PaymentOrderInterface $order, RequestInfo $request)
@@ -87,26 +89,11 @@ class TinkoffProvider extends BaseProvider
     }
 
     /**
-     * @param string $url
+     * See documentation: https://oplata.tinkoff.ru/develop/api/request-sign/
      * @param array $params
-     * @return array
+     * @return string
      */
-    protected function httpSend(string $url, array $params = [])
-    {
-        $data = file_get_contents($url, false, stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => implode("\n", [
-                    'Content-Type: application/json',
-                ]),
-                'content' => Json::encode($params),
-            ],
-        ]));
-
-        return $data ? Json::decode($data) : null;
-    }
-
-    protected function generateToken($params)
+    protected function generateToken(array $params)
     {
         ArrayHelper::remove($params, 'DATA');
         ArrayHelper::remove($params, 'Receipt');
@@ -129,7 +116,13 @@ class TinkoffProvider extends BaseProvider
         return hash('sha256', implode('', $values));
     }
 
-    protected function validateToken($params)
+    /**
+     * See documentation: https://oplata.tinkoff.ru/develop/api/notifications/setup-request-sign/
+     * @param array $params
+     * @throws PaymentProcessException
+     * @throws SignatureMismatchRequestException
+     */
+    protected function validateToken(array $params)
     {
         $remoteToken = ArrayHelper::getValue($params, 'Token');
         if (!$remoteToken) {
@@ -140,5 +133,25 @@ class TinkoffProvider extends BaseProvider
         if (strcmp(strtolower($remoteToken), strtolower($token)) !== 0) {
             throw new SignatureMismatchRequestException('Invalidate token');
         }
+    }
+
+    /**
+     * @param string $url
+     * @param array $params
+     * @return array
+     */
+    protected function httpSend(string $url, array $params = [])
+    {
+        $data = file_get_contents($url, false, stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => implode("\n", [
+                    'Content-Type: application/json',
+                ]),
+                'content' => Json::encode($params),
+            ],
+        ]));
+
+        return $data ? Json::decode($data) : null;
     }
 }
