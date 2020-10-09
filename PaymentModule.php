@@ -15,6 +15,7 @@ use steroids\payment\providers\PayPalProvider;
 use steroids\payment\providers\RobokassaProvider;
 use steroids\payment\providers\TinkoffProvider;
 use steroids\payment\providers\YandexKassaProvider;
+use yii\helpers\Json;
 use yii\helpers\Url;
 
 /**
@@ -75,6 +76,11 @@ class PaymentModule extends Module
     public function getSiteUrl()
     {
         return Url::to(\Yii::$app->homeUrl, true);
+    }
+
+    public function getCallbackUrl($methodName, $params = [])
+    {
+        return Url::to(array_merge(['/payment/payment/callback', 'methodName' => $methodName], $params), true);
     }
 
     public function getSuccessUrl($methodName, $params = [])
