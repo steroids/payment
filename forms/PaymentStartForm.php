@@ -98,7 +98,7 @@ class PaymentStartForm extends PaymentStartFormMeta
 
             // Create order
             $this->order = $this->method
-                ->createOrder($this->account, $inAmount, array_merge(
+                ->createOrder($this->account->userId, $this->account->currency->code, $inAmount, array_merge(
                     $this->attributes,
                     [
                         'description' => $this->description,

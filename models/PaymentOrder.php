@@ -102,7 +102,6 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
 
     protected function callProvider(string $callMethod, RequestInfo $request)
     {
-
         // Start log
         $providerLog = new PaymentProviderLog([
             'orderId' => $this->primaryKey,

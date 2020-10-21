@@ -17,7 +17,7 @@ use steroids\payment\models\PaymentOrderItem;
  * @property string $description
  * @property integer $methodId
  * @property integer $creatorUserId
- * @property integer $payerAccountId
+ * @property integer $payerUserId
  * @property string $providerParamsJson
  * @property string $externalId
  * @property integer $inAmount
@@ -56,7 +56,7 @@ abstract class PaymentOrderMeta extends Model
             ...parent::rules(),
             ['uid', 'string', 'max' => '36'],
             [['description', 'externalId', 'inCurrencyCode', 'outCurrencyCode', 'errorMessage'], 'string', 'max' => 255],
-            [['methodId', 'creatorUserId', 'payerAccountId', 'inAmount', 'outCommissionFixed', 'outCommissionPercent', 'outAmount'], 'integer'],
+            [['methodId', 'creatorUserId', 'payerUserId', 'inAmount', 'outCommissionFixed', 'outCommissionPercent', 'outAmount'], 'integer'],
             [['providerParamsJson', 'redirectUrl', 'methodParamsJson'], 'string'],
             ['status', 'in', 'range' => PaymentStatus::getKeys()],
         ];
@@ -129,7 +129,7 @@ abstract class PaymentOrderMeta extends Model
                 'appType' => 'integer',
                 'isPublishToFrontend' => false
             ],
-            'payerAccountId' => [
+            'payerUserId' => [
                 'label' => Yii::t('steroids', 'Кто оплачивает'),
                 'appType' => 'integer',
                 'isPublishToFrontend' => false

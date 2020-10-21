@@ -2,14 +2,14 @@
 
 namespace steroids\payment\operations;
 
-use steroids\billing\operations\BaseOperation;
+use steroids\billing\operations\BaseBillingOperation;
 use steroids\payment\models\PaymentOrder;
 
 /**
  * Class PaymentWithdrawOperation
  * @property-read PaymentOrder $document
  */
-class PaymentWithdrawOperation extends BaseOperation
+class PaymentWithdrawOperation extends BaseBillingOperation
 {
     public function getTitle()
     {

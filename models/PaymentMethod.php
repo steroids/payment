@@ -59,7 +59,7 @@ class PaymentMethod extends PaymentMethodMeta
      * @param array $params
      * @return PaymentOrder
      */
-    public function createOrder(BillingAccount $toAccount, int $inAmount, array $params = [])
+    public function createOrder(int $payerUserId, string $inCurrencyCode, int $inAmount, array $params = [])
     {
         $description = ArrayHelper::remove($params, 'description');
         $redirectUrl = ArrayHelper::remove($params, 'redirectUrl');
@@ -67,9 +67,9 @@ class PaymentMethod extends PaymentMethodMeta
         $order = new PaymentOrder([
             'methodId' => $this->primaryKey,
             'methodParamsJson' => !empty($params) ? Json::encode($params) : null,
-            'payerAccountId' => $toAccount->primaryKey,
+            'payerUserId' => $payerUserId,
             'inAmount' => $inAmount,
-            'inCurrencyCode' => $toAccount->currency->code,
+            'inCurrencyCode' => $inCurrencyCode,
             'description' => $description,
             'redirectUrl' => $redirectUrl,
             'creatorUserId' => !STEROIDS_IS_CLI && \Yii::$app->has('user') ? \Yii::$app->user->id : null,
