@@ -26,6 +26,19 @@ class PaymentOrderItem extends PaymentOrderItemMeta
      */
     public function execute()
     {
-        BaseOperation::createFromArray(Json::decode($this->operationDump))->execute();
+        $params = array_merge(
+            Json::decode($this->operationDump),
+            [
+                'payerUserId' => $this->order->payerUserId,
+                'documentId' => $this->documentId,
+            ]
+        );
+        if ($this->fromAccountId || $this->toAccountId) {
+            $params = array_merge($params, [
+                'fromAccountId' => $this->fromAccountId,
+                'toAccountId' => $this->toAccountId,
+            ]);
+        }
+        BaseOperation::createFromArray($params)->execute();
     }
 }

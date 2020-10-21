@@ -3,6 +3,7 @@
 namespace steroids\payment\models;
 
 use steroids\billing\models\BillingCurrency;
+use steroids\billing\operations\BaseBillingOperation;
 use steroids\billing\operations\BaseOperation;
 use steroids\core\behaviors\UidBehavior;
 use steroids\core\structure\RequestInfo;
@@ -59,12 +60,25 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
 
     public function addOperation(BaseOperation $operation)
     {
+        $operation->payerUserId = $this->payerUserId;
+
+        $json = $operation->toArray();
+        foreach (['documentId', 'fromAccountId', 'toAccountId'] as $key) {
+            ArrayHelper::remove($json, $key);
+        }
+
         $items = $this->items;
         $item = new PaymentOrderItem([
             'orderId' => $this->primaryKey,
-            'operationDump' => Json::encode($operation->toArray()),
+            'operationDump' => Json::encode($json),
             'position' => count($items),
+            'documentId' => $operation->documentId,
         ]);
+        if ($operation instanceof BaseBillingOperation) {
+            $item->fromAccountId = $operation->fromAccountId;
+            $item->toAccountId = $operation->toAccountId;
+        }
+
         $item->saveOrPanic();
 
         $items[] = $item;

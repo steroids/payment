@@ -4,12 +4,18 @@ namespace steroids\payment\models\meta;
 
 use steroids\core\base\Model;
 use \Yii;
+use yii\db\ActiveQuery;
+use steroids\payment\models\PaymentOrder;
 
 /**
  * @property string $id
  * @property integer $orderId
  * @property string $operationDump
  * @property integer $position
+ * @property integer $documentId
+ * @property integer $fromAccountId
+ * @property integer $toAccountId
+ * @property-read PaymentOrder $order
  */
 abstract class PaymentOrderItemMeta extends Model
 {
@@ -28,9 +34,17 @@ abstract class PaymentOrderItemMeta extends Model
     {
         return [
             ...parent::rules(),
-            [['orderId', 'position'], 'integer'],
+            [['orderId', 'position', 'documentId', 'fromAccountId', 'toAccountId'], 'integer'],
             ['operationDump', 'string'],
         ];
+    }
+
+    /**
+     * @return ActiveQuery
+     */
+    public function getOrder()
+    {
+        return $this->hasOne(PaymentOrder::class, ['id' => 'orderId']);
     }
 
     public static function meta()
@@ -53,6 +67,21 @@ abstract class PaymentOrderItemMeta extends Model
             ],
             'position' => [
                 'label' => Yii::t('steroids', 'Порядок'),
+                'appType' => 'integer',
+                'isPublishToFrontend' => false
+            ],
+            'documentId' => [
+                'label' => Yii::t('steroids', 'ИД документа'),
+                'appType' => 'integer',
+                'isPublishToFrontend' => false
+            ],
+            'fromAccountId' => [
+                'label' => Yii::t('steroids', 'Источник'),
+                'appType' => 'integer',
+                'isPublishToFrontend' => false
+            ],
+            'toAccountId' => [
+                'label' => Yii::t('steroids', 'Получатель'),
                 'appType' => 'integer',
                 'isPublishToFrontend' => false
             ]
