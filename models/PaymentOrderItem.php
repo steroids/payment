@@ -39,6 +39,12 @@ class PaymentOrderItem extends PaymentOrderItemMeta
                 'toAccountId' => $this->toAccountId,
             ]);
         }
-        BaseOperation::createFromArray($params)->execute();
+        $operation = BaseOperation::createFromArray($params);
+        $operation->execute();
+
+        if ($this->documentId !== $operation->documentId) {
+            $this->documentId = $operation->documentId;
+            $this->saveOrPanic();
+        }
     }
 }
