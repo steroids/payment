@@ -63,6 +63,10 @@ class TinkoffProvider extends BaseProvider
         $this->validateToken($request->params);
         $order->setExternalId($request->getParam('PaymentId'));
 
+        if ($request->getParam('ErrorCode') === '1051') {
+            $order->setErrorMessage(\Yii::t('steroids', 'Недостаточно средств'));
+        }
+
         $newStatusMap = [
             'AUTHORIZED' => null,
             'CONFIRMED' => PaymentStatus::SUCCESS,
