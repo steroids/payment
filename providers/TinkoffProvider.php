@@ -95,6 +95,7 @@ class TinkoffProvider extends BaseProvider
      */
     protected function generateToken(array $params)
     {
+        ArrayHelper::remove($params, 'methodName');
         ArrayHelper::remove($params, 'DATA');
         ArrayHelper::remove($params, 'Receipt');
         ArrayHelper::remove($params, 'Items');
