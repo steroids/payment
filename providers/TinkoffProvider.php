@@ -63,10 +63,13 @@ class TinkoffProvider extends BaseProvider
         $this->validateToken($request->params);
         $order->setExternalId($request->getParam('PaymentId'));
 
+        $newStatusMap = [
+            'AUTHORIZED' => null,
+            'CONFIRMED' => PaymentStatus::SUCCESS,
+        ];
+
         return new PaymentProcess([
-            'newStatus' => $request->getParam('Status') === 'CONFIRMED'
-                ? PaymentStatus::SUCCESS
-                : PaymentStatus::FAILURE,
+            'newStatus' => ArrayHelper::getValue($newStatusMap, $request->getParam('Status'), PaymentStatus::FAILURE),
             'responseText' => 'OK',
         ]);
     }
