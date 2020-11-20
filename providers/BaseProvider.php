@@ -33,7 +33,7 @@ abstract class BaseProvider extends BaseObject
      * По-умолчанию включен режим разработчика.
      * @var boolean
      */
-    public bool $testMode = true;
+    public bool $testMode = false;
 
     /**
      * @param PaymentOrderInterface $order

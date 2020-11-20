@@ -11,6 +11,14 @@ use steroids\payment\structure\PaymentProcess;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Json;
 
+/**
+ * Class TinkoffProvider
+ * Test cards:
+ *   - Успешно: 4300000000000777 11/22 111
+ *   - Недостаточно средств: 5000000000000009 11/22 111
+ *   - Для отмены: 4000000000000119 11/22 111
+ * @package steroids\payment\providers
+ */
 class TinkoffProvider extends BaseProvider
 {
 
@@ -46,6 +54,10 @@ class TinkoffProvider extends BaseProvider
             $params,
             ['token' => $this->generateToken($params)]
         ));
+
+        if (!ArrayHelper::getValue($response, 'PaymentURL')) {
+            throw new PaymentProcessException('Not found payment url. Wrong response: ' . print_r($response, true));
+        }
 
         return new PaymentProcess([
             'request' => new RequestInfo([
@@ -102,7 +114,6 @@ class TinkoffProvider extends BaseProvider
      */
     protected function generateToken(array $params)
     {
-        ArrayHelper::remove($params, 'methodName');
         ArrayHelper::remove($params, 'DATA');
         ArrayHelper::remove($params, 'Receipt');
         ArrayHelper::remove($params, 'Items');
@@ -139,7 +150,7 @@ class TinkoffProvider extends BaseProvider
 
         $token = $this->generateToken($params);
         if (strcmp(strtolower($remoteToken), strtolower($token)) !== 0) {
-            throw new SignatureMismatchRequestException('Invalidate token');
+            throw new SignatureMismatchRequestException($params);
         }
     }
 

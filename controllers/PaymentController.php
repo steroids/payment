@@ -112,6 +112,7 @@ class PaymentController extends Controller
 
         // Get request
         $request = RequestInfo::createFromYii();
+        unset($request->params['methodName']);
 
         // Run callback
         $process = $order->callback($request);
@@ -163,6 +164,7 @@ class PaymentController extends Controller
     {
         // Get request
         $request = RequestInfo::createFromYii();
+        unset($request->params['methodName']);
 
         // Get provider
         $provider = $this->findProvider($methodName);
@@ -229,6 +231,7 @@ class PaymentController extends Controller
         }
 
         // Get order id
+        unset($request->params['methodName']);
         $orderId = $provider->resolveOrderId($request);
 
         // Get order and run callback
