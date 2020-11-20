@@ -238,6 +238,11 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         return $this->primaryKey;
     }
 
+    public function getPayerUserId()
+    {
+        return $this->payerUserId;
+    }
+
     public function getOutAmount()
     {
         return $this->outAmount;

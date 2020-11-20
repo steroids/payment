@@ -9,6 +9,7 @@ use steroids\payment\models\PaymentMethodParam;
 use steroids\payment\models\PaymentOrder;
 use steroids\payment\models\PaymentOrderItem;
 use steroids\payment\models\PaymentProviderLog;
+use steroids\payment\providers\CloudpaymentsProvider;
 use steroids\payment\providers\TestProvider;
 use steroids\payment\providers\PayInPayOutProvider;
 use steroids\payment\providers\PayPalProvider;
@@ -70,6 +71,7 @@ class PaymentModule extends Module
             'robokassa' => RobokassaProvider::class,
             'yandexKassa' => YandexKassaProvider::class,
             'tinkoff' => TinkoffProvider::class,
+            'cloudpayments' => CloudpaymentsProvider::class,
         ], $this->providersClasses);
     }
 

@@ -9,6 +9,7 @@ use steroids\payment\exceptions\SignatureMismatchRequestException;
 use steroids\payment\models\PaymentOrderInterface;
 use steroids\payment\structure\PaymentProcess;
 use yii\helpers\ArrayHelper;
+use yii\helpers\Json;
 
 /**
  * Class RobokassaProvider
@@ -51,10 +52,10 @@ class RobokassaProvider extends BaseProvider
      * @param string $description
      * @return string
      */
-    protected static function normalizeDescription($description)
+    protected static function normalizeDescription($description, $length = 100)
     {
         $description = preg_replace('/[^0-9a-zа-я,.-:?! ]+/iu', '', $description);
-        $description = mb_substr($description, 0, 100);
+        $description = mb_substr($description, 0, $length);
         return $description;
     }
 
@@ -73,6 +74,57 @@ class RobokassaProvider extends BaseProvider
 
         // Normalize amount
         $amount = static::normalizeAmount($order->getOutAmount());
+
+        // Generate receipt
+        $receipt = Json::encode([
+            // Система налогообложения.
+            // Необязательное поле, если у организации имеется только один тип налогообложения.
+            'sno' => '',
+            'items' => [
+                [
+                    // Обязательное поле. Наименование товара. Строка, максимальная длина 64 символа.
+                    // Если в наименовании товара Вы используете специальные символы, например кавычки,
+                    // то их обязательно необходимо экранировать.
+                    'name' => static::normalizeDescription($order->getDescription(), 64),
+
+                    // Обязательное поле. Полная сумма в рублях за все количество данного товара с
+                    // учетом всех возможных скидок, бонусов и специальных цен.
+                    'sum' => static::normalizeAmount($order->getOutAmount()),
+
+                    // Обязательное поле. Количество/вес конкретной товарной позиции.
+                    // Десятичное число: целая часть не более 5 знаков, дробная часть не более 3 знаков.
+                    'quantity' => 1.0,
+
+                    // Признак способа расчёта.
+                    // Этот параметр необязательный. Если этот параметр не передан клиентом, то в чеке
+                    // будет указано значение параметра по умолчанию из Личного кабинета, если же параметр
+                    // передан клиентом, то именно эти значения параметра будут переданы в АТОЛ.
+                    'payment_method' => null,
+
+                    // Признак способа расчёта.
+                    // Этот параметр необязательный. Если этот параметр не передан клиентом, то в чеке
+                    // будет указано значение параметра из Личного кабинета, если же параметр передан
+                    // клиентом, то именно это значение параметра будут переданы в АТОЛ.
+                    'payment_object' => null,
+
+                    // Это поле устанавливает налоговую ставку в ККТ. Определяется для каждого вида
+                    // товара по отдельности, но за все единицы конкретного товара вместе.
+                    //   «none» – без НДС;
+                    //   «vat0» – НДС по ставке 0%;
+                    //   «vat10» – НДС чека по ставке 10%;
+                    //   «vat110» – НДС чека по расчетной ставке 10/110;
+                    //   «vat20» – НДС чека по ставке 20%;
+                    //   «vat120» – НДС чека по расчетной ставке 20/120.
+                    'tax' => 'none',
+
+                    // Маркировка товара, передаётся в виде кода товара. Максимальная длина – 32 байта
+                    // (32 символа). Параметр является обязательным только для тех магазинов, которые
+                    // продают товары подлежащие обязательной маркировке. В соответствии с распоряжением
+                    // правительства РФ №792-р.
+                    'nomenclature_code' => null,
+                ],
+            ]
+        ]);
 
         return new PaymentProcess([
             'request' => new RequestInfo([
@@ -103,6 +155,7 @@ class RobokassaProvider extends BaseProvider
                             $this->login,
                             $amount,
                             $order->getId(),
+                            $receipt,
                             $this->password1
                         ],
                         $shpParams
@@ -127,8 +180,10 @@ class RobokassaProvider extends BaseProvider
                     // блоке в Технических настройках Вашего магазина. Это делается для обеспечения безопасности
                     // Вашего интернет-магазина, чтобы злоумышленник не имел возможности «обмануть» Ваш интернет-магазин
                     'IsTest' => $this->testMode,
+
+                    'Receipt' => $receipt,
                 ]),
-            ])
+            ]),
         ]);
     }
 

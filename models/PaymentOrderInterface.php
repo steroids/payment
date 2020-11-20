@@ -10,6 +10,11 @@ interface PaymentOrderInterface
     public function getId();
 
     /**
+     * @return int
+     */
+    public function getPayerUserId();
+
+    /**
      * @param string $key
      * @return mixed|null
      */

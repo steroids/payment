@@ -45,6 +45,7 @@ class PaymentController extends Controller
             'payment' => [
                 'items' => [
                     'test' => 'backend/payment/test',
+                    'cloudpayments' => 'backend/payment/cloudpayments',
                     'callback' => 'backend/payment/<methodName>/callback',
                     'success' => 'backend/payment/<methodName>/success',
                     'failure' => 'backend/payment/<methodName>/failure',
@@ -94,6 +95,17 @@ class PaymentController extends Controller
 
         return $this->renderFile(dirname(__DIR__) . '/views/test-provider.php', [
             'order' => $order,
+        ]);
+    }
+
+    public function actionCloudpayments(string $orderId)
+    {
+        $order = PaymentOrder::findOrPanic(['id' => (int)$orderId]);
+
+        $this->layout = '@steroids/core/views/layout-blank';
+        return $this->render('@steroids/payment/views/cloudpayments-provider', [
+            'order' => $order,
+            'provider' => PaymentModule::getInstance()->getProvider($order->method->providerName),
         ]);
     }
 
