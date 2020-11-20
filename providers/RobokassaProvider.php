@@ -36,7 +36,7 @@ class RobokassaProvider extends BaseProvider
     /**
      * @var string
      */
-    public $url;
+    public $url = 'https://auth.robokassa.ru/Merchant/Index.aspx';
 
     /**
      * @param int|float $amount
@@ -44,7 +44,7 @@ class RobokassaProvider extends BaseProvider
      */
     protected static function normalizeAmount($amount)
     {
-        return round($amount, 2);
+        return round($amount / 100, 2);
     }
 
     /**
@@ -53,7 +53,7 @@ class RobokassaProvider extends BaseProvider
      */
     protected static function normalizeDescription($description)
     {
-        $description = preg_replace('/[^0-9a-zа-я,.-:?!]+/', '', $description);
+        $description = preg_replace('/[^0-9a-zа-я,.-:?! ]+/iu', '', $description);
         $description = mb_substr($description, 0, 100);
         return $description;
     }
@@ -71,15 +71,12 @@ class RobokassaProvider extends BaseProvider
             $shpParams['Shp_' . $key] = $value;
         }
 
-        // Remote url
-        $url = $this->url ?: ($this->testMode ? 'https://test.robokassa.ru/Index.aspx' : 'https://auth.robokassa.ru/Merchant/Index.aspx');
-
         // Normalize amount
         $amount = static::normalizeAmount($order->getOutAmount());
 
         return new PaymentProcess([
             'request' => new RequestInfo([
-                'url' => $url,
+                'url' => $this->url,
                 'params' => array_merge($shpParams, [
                     // Идентификатор магазина – обозначение магазина ТОЛЬКО для использования интерфейсом инициализации
                     // оплаты, то есть для понимания системой ROBOKASSA в адрес какого магазина будет проводиться
@@ -123,6 +120,13 @@ class RobokassaProvider extends BaseProvider
                     // интерфейсе ROBOKASSA, и на правильность передачи Дополнительных пользовательских параметров,
                     // если в их значениях присутствует язык отличный от английского.
                     'Encoding' => 'utf-8',
+
+                    // Для работы в тестовом режиме  обязателен параметр  IsTest
+                    // Внимание! Для работы в тестовом режиме используется специальный тестовый набор паролей,
+                    // не совпадающих с основными рабочими паролями Вашего магазина. Они прописываются в специальном
+                    // блоке в Технических настройках Вашего магазина. Это делается для обеспечения безопасности
+                    // Вашего интернет-магазина, чтобы злоумышленник не имел возможности «обмануть» Ваш интернет-магазин
+                    'IsTest' => $this->testMode,
                 ]),
             ])
         ]);
