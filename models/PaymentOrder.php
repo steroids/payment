@@ -2,9 +2,12 @@
 
 namespace steroids\payment\models;
 
+use steroids\auth\AuthModule;
+use steroids\auth\UserInterface;
 use steroids\billing\models\BillingCurrency;
 use steroids\billing\operations\BaseBillingOperation;
 use steroids\billing\operations\BaseOperation;
+use steroids\core\base\Model;
 use steroids\core\behaviors\UidBehavior;
 use steroids\core\structure\RequestInfo;
 use steroids\payment\enums\PaymentStatus;
@@ -18,6 +21,7 @@ use yii\base\InvalidConfigException;
 use yii\db\ActiveQuery;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Json;
+use yii\web\IdentityInterface;
 
 /**
  * Class PaymentOrder
@@ -25,6 +29,7 @@ use yii\helpers\Json;
  * @property-read array $providerParams
  * @property-read array $methodParams
  * @property-read PaymentProviderLog $lastProviderLogger
+ * @property-read IdentityInterface|UserInterface|Model $payerUser
  */
 class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
 {
@@ -218,6 +223,14 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
     {
         return $this->hasOne(PaymentProviderLog::class, ['orderId' => 'id'])
             ->orderBy(['id' => SORT_DESC]);
+    }
+
+    /**
+     * @return ActiveQuery
+     */
+    public function getPayerUser()
+    {
+        return $this->hasOne(AuthModule::getInstance()->userClass, ['id' => 'payerUserId']);
     }
 
     /**

@@ -47,6 +47,14 @@ abstract class PaymentOrderMeta extends Model
     public function fields()
     {
         return [
+            'id',
+            'description',
+            'payerUserId',
+            'inAmount',
+            'inCurrencyCode',
+            'outAmount',
+            'outCurrencyCode',
+            'status',
         ];
     }
 
@@ -108,7 +116,7 @@ abstract class PaymentOrderMeta extends Model
             'id' => [
                 'label' => Yii::t('steroids', 'ID'),
                 'appType' => 'primaryKey',
-                'isPublishToFrontend' => false
+                'isPublishToFrontend' => true
             ],
             'uid' => [
                 'label' => Yii::t('steroids', 'Uid'),
@@ -117,7 +125,7 @@ abstract class PaymentOrderMeta extends Model
             ],
             'description' => [
                 'label' => Yii::t('steroids', 'Описание'),
-                'isPublishToFrontend' => false
+                'isPublishToFrontend' => true
             ],
             'methodId' => [
                 'label' => Yii::t('steroids', 'Метод'),
@@ -132,7 +140,7 @@ abstract class PaymentOrderMeta extends Model
             'payerUserId' => [
                 'label' => Yii::t('steroids', 'Кто оплачивает'),
                 'appType' => 'integer',
-                'isPublishToFrontend' => false
+                'isPublishToFrontend' => true
             ],
             'providerParamsJson' => [
                 'label' => Yii::t('steroids', 'Промежуточные параметры провайдера'),
@@ -146,11 +154,11 @@ abstract class PaymentOrderMeta extends Model
             'inAmount' => [
                 'label' => Yii::t('steroids', 'Сумма в валюте сайта'),
                 'appType' => 'integer',
-                'isPublishToFrontend' => false
+                'isPublishToFrontend' => true
             ],
             'inCurrencyCode' => [
                 'label' => Yii::t('steroids', 'Валюта сайта'),
-                'isPublishToFrontend' => false
+                'isPublishToFrontend' => true
             ],
             'outCommissionFixed' => [
                 'label' => Yii::t('steroids', 'Комиссия в валюте платежной системы'),
@@ -165,16 +173,16 @@ abstract class PaymentOrderMeta extends Model
             'outAmount' => [
                 'label' => Yii::t('steroids', 'Сумма в валюте платежного шлюза'),
                 'appType' => 'integer',
-                'isPublishToFrontend' => false
+                'isPublishToFrontend' => true
             ],
             'outCurrencyCode' => [
                 'label' => Yii::t('steroids', 'Валюта платежного шлюза'),
-                'isPublishToFrontend' => false
+                'isPublishToFrontend' => true
             ],
             'status' => [
                 'label' => Yii::t('steroids', 'Статус'),
                 'appType' => 'enum',
-                'isPublishToFrontend' => false,
+                'isPublishToFrontend' => true,
                 'enumClassName' => PaymentStatus::class
             ],
             'redirectUrl' => [
