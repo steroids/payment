@@ -3,12 +3,20 @@
 namespace steroids\payment\forms;
 
 use app\auth\AuthModule;
+use steroids\auth\UserInterface;
+use steroids\core\base\Model;
 use steroids\payment\forms\meta\PaymentOrdersSearchMeta;
 use steroids\payment\models\PaymentOrder;
 use yii\db\ActiveQuery;
+use yii\web\IdentityInterface;
 
 class PaymentOrdersSearch extends PaymentOrdersSearchMeta
 {
+    /**
+     * @var IdentityInterface|UserInterface|Model
+     */
+    public $user;
+
     public function fields()
     {
         return [
@@ -63,6 +71,10 @@ class PaymentOrdersSearch extends PaymentOrdersSearchMeta
                 ->andWhere(['or', ...$likeConditions]);
         } else {
             $query->with('payerUser');
+        }
+
+        if ($this->user) {
+            $query->andWhere(['payerUserId' => $this->user->primaryKey]);
         }
     }
 }
