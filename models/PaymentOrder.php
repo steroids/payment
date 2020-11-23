@@ -331,6 +331,15 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
     }
 
     /**
+     * @param UserInterface|Model|IdentityInterface $user
+     * @return array|bool
+     */
+    public function canUpdate($user)
+    {
+        return ($user->getId() === $this->payerUserId && $this->canUpdated()) || parent::canUpdate($user);
+    }
+
+    /**
      * @inheritDoc
      */
     public function beforeSave($insert)
