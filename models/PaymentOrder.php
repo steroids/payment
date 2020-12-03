@@ -197,9 +197,11 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
             $this->status = $process->newStatus;
             $this->saveOrPanic();
 
-            // Execute items operations
-            foreach ($this->items as $orderItem) {
-                $orderItem->execute();
+            // Execute items operations, if SUCCESS
+            if ($this->status === PaymentStatus::SUCCESS) {
+                foreach ($this->items as $orderItem) {
+                    $orderItem->execute();
+                }
             }
 
             // Trigger event
