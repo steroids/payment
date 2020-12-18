@@ -12,6 +12,8 @@ use steroids\payment\models\PaymentOrder;
 use steroids\payment\PaymentModule;
 use steroids\payment\providers\BaseProvider;
 use yii\base\InvalidConfigException;
+use yii\helpers\ArrayHelper;
+use yii\helpers\Html;
 use yii\web\Controller;
 use yii\web\Response;
 
@@ -45,6 +47,7 @@ class PaymentController extends Controller
             'payment' => [
                 'items' => [
                     'test' => 'backend/payment/test',
+                    'proxy-post' => 'backend/payment/proxy-post',
                     'cloudpayments' => 'backend/payment/cloudpayments',
                     'callback' => 'backend/payment/<methodName>/callback',
                     'success' => 'backend/payment/<methodName>/success',
@@ -96,6 +99,21 @@ class PaymentController extends Controller
         return $this->renderFile(dirname(__DIR__) . '/views/test-provider.php', [
             'order' => $order,
         ]);
+    }
+
+    public function actionProxyPost()
+    {
+        $params = \Yii::$app->request->get();
+        $url = ArrayHelper::remove($params, '_url');
+
+        $html = '';
+        $html .= Html::beginForm($url, 'post', ['name' => 'redirectForm']);
+        foreach ($params as $key => $value) {
+            $html .= Html::hiddenInput($key, $value);
+        }
+        $html .= Html::endForm();
+        $html .= Html::script('document.redirectForm.submit()');
+        return $html;
     }
 
     public function actionCloudpayments(string $orderId)
@@ -249,17 +267,4 @@ class PaymentController extends Controller
         // Get order and run callback
         return $orderId ? PaymentOrder::findOrPanic(['id' => $orderId]) : null;
     }
-
-    /*protected function redirectPost(string $url, $params = [])
-    {
-        $html = '';
-        $html .= Html::beginForm($url, 'post', ['name' => 'redirectForm']);
-        foreach ($params as $key => $value) {
-            $html .= Html::hiddenInput($key, $value);
-        }
-        $html .= Html::endForm();
-        $html .= Html::script('document.redirectForm.submit()');
-
-        return $html;
-    }*/
 }
