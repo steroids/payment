@@ -53,7 +53,8 @@ class PayeerProvider extends BaseProvider
      */
     protected static function normalizeAmount($amount)
     {
-        return round($amount / 100, 2);
+        $amount = (string)$amount;
+        return substr($amount, 0, -2) . '.' . substr($amount, -2);
     }
 
     /**
