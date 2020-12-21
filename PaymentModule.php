@@ -10,6 +10,7 @@ use steroids\payment\models\PaymentOrder;
 use steroids\payment\models\PaymentOrderItem;
 use steroids\payment\models\PaymentProviderLog;
 use steroids\payment\providers\CloudpaymentsProvider;
+use steroids\payment\providers\PayeerProvider;
 use steroids\payment\providers\TeleportProvider;
 use steroids\payment\providers\TestProvider;
 use steroids\payment\providers\PayInPayOutProvider;
@@ -74,6 +75,7 @@ class PaymentModule extends Module
             'tinkoff' => TinkoffProvider::class,
             'cloudpayments' => CloudpaymentsProvider::class,
             'teleport' => TeleportProvider::class,
+            'payeer' => PayeerProvider::class,
         ], $this->providersClasses);
     }
 

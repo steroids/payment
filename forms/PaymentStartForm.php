@@ -56,7 +56,7 @@ class PaymentStartForm extends PaymentStartFormMeta
                 'id',
                 'status',
             ],
-            'url' => fn () => (string)$this->process->request,
+            'url' => fn() => (string)$this->process->request,
         ];
     }
 
@@ -99,7 +99,12 @@ class PaymentStartForm extends PaymentStartFormMeta
             // Create order
             $this->order = $this->method
                 ->createOrder($this->account->userId, $this->account->currency->code, $inAmount, array_merge(
-                    $this->attributes,
+                    $this->getAttributes([
+                        'inAmount',
+                        'methodName',
+                        'accountName',
+                        'currencyCode',
+                    ]),
                     [
                         'description' => $this->description,
                         'redirectUrl' => $this->redirectUrl
