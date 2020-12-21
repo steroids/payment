@@ -45,7 +45,7 @@ class RobokassaProvider extends BaseProvider
      */
     protected static function normalizeAmount($amount)
     {
-        $amount = (string)$amount;
+        $amount = str_pad((string)$amount, 3, '0', STR_PAD_LEFT);
         return substr($amount, 0, -2) . '.' . substr($amount, -2) . '0000';
     }
 
