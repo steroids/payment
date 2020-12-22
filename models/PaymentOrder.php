@@ -319,6 +319,14 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         $this->externalId = $value;
     }
 
+    public function setExternalAmount(int $amount)
+    {
+        $this->realOutAmount = $amount;
+        $this->realInAmount = $this->realOutAmount === $this->outAmount
+            ? $this->inAmount
+            : BillingCurrency::convert($this->outCurrencyCode, $this->inCurrencyCode, $this->realOutAmount);
+    }
+
     public function setErrorMessage(string $value)
     {
         $this->errorMessage = $value;

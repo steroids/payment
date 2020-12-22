@@ -11,6 +11,14 @@ use steroids\payment\models\PaymentOrder;
  */
 class PaymentChargeOperation extends BaseBillingOperation
 {
+    /**
+     * @return int
+     */
+    public function getDelta()
+    {
+        return $this->document->realInAmount ?: $this->document->inAmount;
+    }
+
     public function getTitle()
     {
         if ($this->document->description) {

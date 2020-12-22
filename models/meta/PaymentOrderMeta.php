@@ -32,6 +32,8 @@ use steroids\payment\models\PaymentOrderItem;
  * @property string $updateTime
  * @property string $methodParamsJson
  * @property string $errorMessage
+ * @property integer $realInAmount
+ * @property integer $realOutAmount
  * @property-read PaymentMethod $method
  * @property-read BillingCurrency $inCurrency
  * @property-read BillingCurrency $outCurrency
@@ -64,7 +66,7 @@ abstract class PaymentOrderMeta extends Model
             ...parent::rules(),
             ['uid', 'string', 'max' => '36'],
             [['description', 'externalId', 'inCurrencyCode', 'outCurrencyCode', 'errorMessage'], 'string', 'max' => 255],
-            [['methodId', 'creatorUserId', 'payerUserId', 'inAmount', 'outCommissionFixed', 'outCommissionPercent', 'outAmount'], 'integer'],
+            [['methodId', 'creatorUserId', 'payerUserId', 'inAmount', 'outCommissionFixed', 'outCommissionPercent', 'outAmount', 'realInAmount', 'realOutAmount'], 'integer'],
             [['providerParamsJson', 'redirectUrl', 'methodParamsJson'], 'string'],
             ['status', 'in', 'range' => PaymentStatus::getKeys()],
         ];
@@ -209,6 +211,16 @@ abstract class PaymentOrderMeta extends Model
             ],
             'errorMessage' => [
                 'label' => Yii::t('steroids', 'Текст ошибки, полученный от платежной системы'),
+                'isPublishToFrontend' => false
+            ],
+            'realInAmount' => [
+                'label' => Yii::t('steroids', 'Сумма в валюте сайта (фактически зачисляемая)'),
+                'appType' => 'integer',
+                'isPublishToFrontend' => false
+            ],
+            'realOutAmount' => [
+                'label' => Yii::t('steroids', 'Сумма в валюте платежного шлюза (фактически зачисляемая)'),
+                'appType' => 'integer',
                 'isPublishToFrontend' => false
             ]
         ]);

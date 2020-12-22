@@ -118,7 +118,6 @@ class PaymentStartForm extends PaymentStartFormMeta
                     new PaymentChargeOperation([
                         'fromAccount' => $this->method->systemAccount,
                         'toAccount' => $this->account,
-                        'amount' => $inAmount,
                         'document' => $this->order,
                     ])
                 );

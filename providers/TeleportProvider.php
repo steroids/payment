@@ -37,6 +37,11 @@ class TeleportProvider extends BaseProvider
     public ?string $sciPassport = null;
 
     /**
+     * @var string
+     */
+    public string $currency = 'USD';
+
+    /**
      * @inheritDoc
      */
     public function start(PaymentOrderInterface $order, RequestInfo $request)
@@ -49,7 +54,7 @@ class TeleportProvider extends BaseProvider
                     't_account_email' => $this->accountEmail,
                     't_sci_name' => $this->sciName,
                     't_amount' => round($order->getOutAmount() / 100, 2),
-                    't_currency' => 'USD',
+                    't_currency' => $this->currency,
                     't_order_id' => $order->getId(),
                 ]
             ]),
@@ -61,6 +66,11 @@ class TeleportProvider extends BaseProvider
      */
     public function callback(PaymentOrderInterface $order, RequestInfo $request)
     {
+        $order->setExternalId($request->getParam('t_id'));
+        if ($request->getParam('t_currency') === $this->currency) {
+            $order->setExternalAmount(((int) $request->getParam('t_amount')) * 100);
+        }
+
         $this->validateToken($request->params);
 
         return new PaymentProcess([
@@ -103,6 +113,7 @@ class TeleportProvider extends BaseProvider
             $params['t_amount'],
             $params['t_currency'],
             $params['t_order_id'],
+            $params['t_id'],
             $this->sciPassport
         ]));
         if (strcmp(strtoupper($remoteToken), strtoupper($token)) !== 0) {

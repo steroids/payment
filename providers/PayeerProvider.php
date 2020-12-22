@@ -119,6 +119,7 @@ class PayeerProvider extends BaseProvider
         }
 
         // Validate token
+        $order->setExternalId($request->getParam('m_operation_id'));
         $this->validateToken($request->params);
 
         return new PaymentProcess([
