@@ -109,8 +109,8 @@ class QiwiProvider extends BaseProvider
             ]);
         }
 
+        $order->setExternalId($request->getParam('payment.paymentId'));
         $this->validateToken($request);
-        $order->setExternalId($request->getParam('paymentId'));
 
         return new PaymentProcess([
             'newStatus' => $request->getParam('payment.status.value') === 'SUCCESS' ? PaymentStatus::SUCCESS : null,
