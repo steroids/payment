@@ -6,16 +6,25 @@ use steroids\billing\operations\BaseBillingOperation;
 use steroids\payment\models\PaymentOrder;
 
 /**
- * Class PaymentWithdrawOperation
+ * Class PaymentWithdrawReserveOperation
+ * @package steroids\payment\operations
  * @property-read PaymentOrder $document
  */
-class PaymentWithdrawOperation extends BaseBillingOperation
+class PaymentWithdrawReserveOperation extends BaseBillingOperation
 {
+    /**
+     * @inheritDoc
+     */
+    public function getDelta()
+    {
+        return $this->document->inAmount;
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function getTitle()
     {
-        if ($this->document->description) {
-            return $this->document->description;
-        }
         return \Yii::t('app', 'Вывод средств');
     }
 

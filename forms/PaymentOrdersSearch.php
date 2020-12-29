@@ -8,6 +8,7 @@ use steroids\core\base\Model;
 use steroids\payment\forms\meta\PaymentOrdersSearchMeta;
 use steroids\payment\models\PaymentOrder;
 use yii\db\ActiveQuery;
+use yii\helpers\Json;
 use yii\web\IdentityInterface;
 
 class PaymentOrdersSearch extends PaymentOrdersSearchMeta
@@ -36,6 +37,7 @@ class PaymentOrdersSearch extends PaymentOrdersSearchMeta
                 'id',
                 'title',
             ],
+            'methodParams' => fn (PaymentOrder $order) => $order->methodParamsJson ? Json::decode($order->methodParamsJson) : null,
         ];
     }
 

@@ -41,6 +41,16 @@ interface PaymentOrderInterface
     public function getMethodName();
 
     /**
+     * @return mixed
+     */
+    public function isCharge();
+    
+    /**
+     * @return mixed
+     */
+    public function isWithdraw();
+
+    /**
      * @param string $key
      * @param $value
      */

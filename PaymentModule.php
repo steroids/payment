@@ -10,6 +10,7 @@ use steroids\payment\models\PaymentOrder;
 use steroids\payment\models\PaymentOrderItem;
 use steroids\payment\models\PaymentProviderLog;
 use steroids\payment\providers\CloudpaymentsProvider;
+use steroids\payment\providers\ManualProvider;
 use steroids\payment\providers\PayeerProvider;
 use steroids\payment\providers\QiwiProvider;
 use steroids\payment\providers\TeleportProvider;
@@ -69,6 +70,7 @@ class PaymentModule extends Module
 
         $this->providersClasses = array_merge([
             'test' => TestProvider::class,
+            'manual' => ManualProvider::class,
             'payInPayOut' => PayInPayOutProvider::class,
             'payPal' => PayPalProvider::class,
             'robokassa' => RobokassaProvider::class,

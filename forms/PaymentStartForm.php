@@ -12,6 +12,8 @@ use steroids\payment\forms\meta\PaymentStartFormMeta;
 use steroids\payment\models\PaymentMethod;
 use steroids\payment\models\PaymentOrder;
 use steroids\payment\operations\PaymentChargeOperation;
+use steroids\payment\operations\PaymentWithdrawReserveOperation;
+use steroids\payment\operations\PaymentWithdrawRollbackOperation;
 use steroids\payment\structure\PaymentProcess;
 use yii\helpers\ArrayHelper;
 use yii\validators\RequiredValidator;
@@ -96,50 +98,58 @@ class PaymentStartForm extends PaymentStartFormMeta
             // Amount
             $inAmount = $this->account->currency->amountToInt($this->inAmount);
 
-            // Create order
-            $this->order = $this->method
-                ->createOrder($this->account->userId, $this->account->currency->code, $inAmount, array_merge(
-                    $this->getAttributes([
-                        'inAmount',
-                        'methodName',
-                        'accountName',
-                        'currencyCode',
-                    ]),
-                    [
-                        'description' => $this->description,
-                        'redirectUrl' => $this->redirectUrl
-                    ],
-                    $this->custom
-                ));
+            $transaction = \Yii::$app->db->beginTransaction();
+            try {
+                // Create order
+                $this->order = $this->method
+                    ->createOrder($this->account->userId, $this->account->currency->code, $inAmount, array_merge(
+                        [
+                            'description' => $this->description,
+                            'redirectUrl' => $this->redirectUrl
+                        ],
+                        $this->custom
+                    ));
 
-            // Add charge/withdraw item
-            if ($this->direction === PaymentDirection::CHARGE) {
-                $this->order->addOperation(
-                    new PaymentChargeOperation([
-                        'fromAccount' => $this->method->systemAccount,
-                        'toAccount' => $this->account,
-                        'document' => $this->order,
-                    ])
-                );
-            } else {
-                // TODO Подумать над выводом...
-                /*$this->order->addOperation(
-                    new PaymentChargeOperation([
+                // Add charge/withdraw item
+                if ($this->direction === PaymentDirection::CHARGE) {
+                    $this->order->addOperation(
+                        new PaymentChargeOperation([
+                            'fromAccount' => $this->method->systemAccount,
+                            'toAccount' => $this->account,
+                            'document' => $this->order,
+                        ])
+                    );
+                } else {
+                    // Reserve amount
+                    (new PaymentWithdrawReserveOperation([
                         'fromAccount' => $this->account,
                         'toAccount' => $this->method->systemAccount,
-                        'amount' => $inAmount,
                         'document' => $this->order,
-                    ])
-                );*/
-            }
+                    ]))->execute();
 
-            // Auto create request
-            if (!$this->request) {
-                $this->request = RequestInfo::createFromYii();
-            }
+                    // Add rollback handler
+                    $this->order->addFailureOperation(
+                        new PaymentWithdrawRollbackOperation([
+                            'fromAccount' => $this->method->systemAccount,
+                            'toAccount' => $this->account,
+                            'document' => $this->order,
+                        ])
+                    );
+                }
 
-            // Start
-            $this->process = $this->order->start($this->request);
+                // Auto create request
+                if (!$this->request) {
+                    $this->request = RequestInfo::createFromYii();
+                }
+
+                // Start
+                $this->process = $this->order->start($this->request);
+
+                $transaction->commit();
+            } catch (\Exception $e) {
+                $transaction->rollBack();
+                throw $e;
+            }
         }
     }
 

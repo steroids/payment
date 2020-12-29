@@ -3,6 +3,7 @@
 namespace steroids\payment\models\meta;
 
 use steroids\core\base\Model;
+use steroids\payment\enums\PaymentStatus;
 use \Yii;
 use yii\db\ActiveQuery;
 use steroids\payment\models\PaymentOrder;
@@ -15,6 +16,7 @@ use steroids\payment\models\PaymentOrder;
  * @property integer $documentId
  * @property integer $fromAccountId
  * @property integer $toAccountId
+ * @property string $conditionStatus
  * @property-read PaymentOrder $order
  */
 abstract class PaymentOrderItemMeta extends Model
@@ -36,6 +38,7 @@ abstract class PaymentOrderItemMeta extends Model
             ...parent::rules(),
             [['orderId', 'position', 'documentId', 'fromAccountId', 'toAccountId'], 'integer'],
             ['operationDump', 'string'],
+            ['conditionStatus', 'in', 'range' => PaymentStatus::getKeys()],
         ];
     }
 
@@ -84,6 +87,12 @@ abstract class PaymentOrderItemMeta extends Model
                 'label' => Yii::t('steroids', 'Получатель'),
                 'appType' => 'integer',
                 'isPublishToFrontend' => false
+            ],
+            'conditionStatus' => [
+                'label' => Yii::t('steroids', 'Выполнять при статусе'),
+                'appType' => 'enum',
+                'isPublishToFrontend' => false,
+                'enumClassName' => PaymentStatus::class
             ]
         ]);
     }

@@ -47,6 +47,7 @@ class PaymentController extends Controller
             'payment' => [
                 'items' => [
                     'test' => 'backend/payment/test',
+                    'manual' => 'backend/payment/manual',
                     'proxy-post' => 'backend/payment/proxy-post',
                     'cloudpayments' => 'backend/payment/cloudpayments',
                     'callback' => 'backend/payment/<methodName>/callback',
@@ -97,6 +98,24 @@ class PaymentController extends Controller
         }
 
         return $this->renderFile(dirname(__DIR__) . '/views/test-provider.php', [
+            'order' => $order,
+        ]);
+    }
+
+    /**
+     * @param string $orderId
+     * @return string
+     * @throws PaymentException
+     * @throws \yii\web\NotFoundHttpException
+     */
+    public function actionManual(string $orderId)
+    {
+        $order = PaymentOrder::findOrPanic(['id' => (int)$orderId]);
+        if ($order->method->providerName !== PaymentModule::PROVIDER_TEST) {
+            throw new PaymentException('Incorrect order provider! Test area support only manual test provider.');
+        }
+
+        return $this->renderFile(dirname(__DIR__) . '/views/manual-provider.php', [
             'order' => $order,
         ]);
     }

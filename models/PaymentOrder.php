@@ -10,6 +10,7 @@ use steroids\billing\operations\BaseOperation;
 use steroids\core\base\Model;
 use steroids\core\behaviors\UidBehavior;
 use steroids\core\structure\RequestInfo;
+use steroids\payment\enums\PaymentDirection;
 use steroids\payment\enums\PaymentStatus;
 use steroids\payment\exceptions\PaymentException;
 use steroids\payment\models\meta\PaymentOrderMeta;
@@ -63,7 +64,16 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         ];
     }
 
-    public function addOperation(BaseOperation $operation)
+    /**
+     * @param BaseOperation $operation
+     * @return $this
+     */
+    public function addFailureOperation(BaseOperation $operation)
+    {
+        return $this->addOperation($operation, PaymentStatus::FAILURE);
+    }
+
+    public function addOperation(BaseOperation $operation, $conditionStatus = PaymentStatus::SUCCESS)
     {
         $operation->payerUserId = $this->payerUserId;
 
@@ -78,6 +88,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
             'operationDump' => Json::encode($json),
             'position' => count($items),
             'documentId' => $operation->documentId,
+            'conditionStatus' => $conditionStatus,
         ]);
         if ($operation instanceof BaseBillingOperation) {
             $item->fromAccountId = $operation->fromAccountId;
@@ -147,7 +158,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         try {
             // Call provider method
             /** @var PaymentProcess $process */
-            $process = $provider->$callMethod($this, $request);
+            $process = $provider->$callMethod($this, $request) ?: new PaymentProcess();
             $providerLog->responseRaw = $process->responseText;
 
             // Trigger event
@@ -198,8 +209,8 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
             $this->saveOrPanic();
 
             // Execute items operations, if SUCCESS
-            if ($this->status === PaymentStatus::SUCCESS) {
-                foreach ($this->items as $orderItem) {
+            foreach ($this->items as $orderItem) {
+                if ($this->status === $orderItem->conditionStatus) {
                     $orderItem->execute();
                 }
             }
@@ -330,6 +341,16 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
     public function setErrorMessage(string $value)
     {
         $this->errorMessage = $value;
+    }
+
+    public function isCharge()
+    {
+        return $this->method->direction === PaymentDirection::CHARGE;
+    }
+
+    public function isWithdraw()
+    {
+        return $this->method->direction === PaymentDirection::WITHDRAW;
     }
 
     /**

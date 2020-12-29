@@ -10,7 +10,7 @@ use steroids\payment\enums\PaymentStatus;
 use steroids\payment\structure\PaymentProcess;
 
 /**
- * Class ManualTestProvider
+ * Class TestProvider
  * @package steroids\payment\providers
  */
 class TestProvider extends BaseProvider
