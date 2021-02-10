@@ -22,7 +22,9 @@ class TestProvider extends BaseProvider
     {
         return new PaymentProcess([
             'request' => new RequestInfo([
-                'url' => Url::to(['/payment/payment/test'], true),
+                'url' => !STEROIDS_IS_CLI
+                    ? Url::to(['/payment/payment/test'], true)
+                    : 'http://cli',
                 'params' => [
                     'orderId' => $order->getId(),
                 ]

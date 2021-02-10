@@ -9,6 +9,7 @@ use steroids\payment\models\PaymentMethodParam;
 use steroids\payment\models\PaymentOrder;
 use steroids\payment\models\PaymentOrderItem;
 use steroids\payment\models\PaymentProviderLog;
+use steroids\payment\providers\AlfabankProvider;
 use steroids\payment\providers\CloudpaymentsProvider;
 use steroids\payment\providers\ManualProvider;
 use steroids\payment\providers\PayeerProvider;
@@ -76,6 +77,7 @@ class PaymentModule extends Module
             'robokassa' => RobokassaProvider::class,
             'yandexKassa' => YandexKassaProvider::class,
             'tinkoff' => TinkoffProvider::class,
+            'alfabank' => AlfabankProvider::class,
             'cloudpayments' => CloudpaymentsProvider::class,
             'teleport' => TeleportProvider::class,
             'payeer' => PayeerProvider::class,
