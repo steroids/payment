@@ -84,7 +84,11 @@ class QiwiProvider extends BaseProvider
             // URL отправки callback.
             //'callbackUrl' => $this->module->getCallbackUrl($order->getMethodName()),
         ];
-        $response = $this->httpSend('https://api.qiwi.com/partner/bill/v1/bills/' . $order->getId(), $params);
+
+        $response = $this->httpSend(
+            '/partner/payin/v1/sites/' . $this->siteId . '/bills/' . $order->getId(),
+            $params
+        );
 
         if (!ArrayHelper::getValue($response, 'payUrl')) {
             throw new PaymentProcessException('Not found payment url. Wrong response: ' . print_r($response, true));
