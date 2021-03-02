@@ -86,7 +86,7 @@ class QiwiProvider extends BaseProvider
         ];
 
         $response = $this->httpSend(
-            '/partner/payin/v1/sites/' . $this->siteId . '/bills/' . $order->getId(),
+            'https://api.qiwi.com/partner/payin/v1/sites/' . $this->siteId . '/bills/' . $order->getId(),
             $params
         );
 
