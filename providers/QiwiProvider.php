@@ -68,7 +68,7 @@ class QiwiProvider extends BaseProvider
             'expirationDateTime' => date('c', strtotime('+1 days')),
 
             // Описание услуги, которую получает Плательщик.
-            'comment' => mb_substr($order->getDescription(), 1000),
+            'comment' => mb_substr($order->getDescription(), 0, 1000),
 
             'customer' => [
                 // Уникальный идентификатор Покупателя в системе ТСП.
