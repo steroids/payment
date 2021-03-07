@@ -13,6 +13,7 @@ use steroids\core\structure\RequestInfo;
 use steroids\payment\enums\PaymentDirection;
 use steroids\payment\enums\PaymentStatus;
 use steroids\payment\exceptions\PaymentException;
+use steroids\payment\interfaces\ProviderWithdrawInterface;
 use steroids\payment\models\meta\PaymentOrderMeta;
 use steroids\payment\PaymentModule;
 use steroids\payment\PaymentProcessEvent;
@@ -105,13 +106,14 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
 
     /**
      * @param RequestInfo $request
+     * @param string $callMethod
      * @return PaymentProcess
      * @throws InvalidConfigException
      * @throws PaymentException
      */
-    public function start(RequestInfo $request)
+    public function start(RequestInfo $request, $callMethod = 'start')
     {
-        $process = $this->callProvider('start', $request);
+        $process = $this->callProvider($callMethod, $request);
 
         $this->status = PaymentStatus::PROCESS;
         $this->saveOrPanic();
@@ -151,6 +153,10 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         $provider = PaymentModule::getInstance()->getProvider($this->method->providerName);
         if (!$provider) {
             throw new InvalidConfigException("Not found payment provider '{$this->method->providerName}'");
+        }
+
+        if(!$provider instanceof ProviderWithdrawInterface){
+            throw new InvalidConfigException("Provider '{$this->method->providerName}' does not support withdrawal operations");
         }
 
         // Run start

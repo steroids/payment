@@ -143,7 +143,12 @@ class PaymentStartForm extends PaymentStartFormMeta
                 }
 
                 // Start
-                $this->process = $this->order->start($this->request);
+                $this->process = $this->order->start(
+                    $this->request,
+                    $this->direction === PaymentDirection::WITHDRAW
+                        ? 'withdraw'
+                        : 'start'
+                );
 
                 $transaction->commit();
             } catch (\Exception $e) {

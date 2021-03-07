@@ -6,6 +6,7 @@ use steroids\core\structure\RequestInfo;
 use steroids\payment\enums\PaymentStatus;
 use steroids\payment\exceptions\PaymentProcessException;
 use steroids\payment\exceptions\SignatureMismatchRequestException;
+use steroids\payment\interfaces\ProviderWithdrawInterface;
 use steroids\payment\models\PaymentOrderInterface;
 use steroids\payment\structure\PaymentProcess;
 use yii\helpers\ArrayHelper;
@@ -16,7 +17,7 @@ use yii\helpers\Url;
  * Docs: https://tport.nl/Teleport-SCI.pdf
  * @package steroids\payment\providers
  */
-class TeleportProvider extends BaseProvider
+class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
 {
     /**
      * Ваш e-mail, для которого создан данный SCI
@@ -58,6 +59,34 @@ class TeleportProvider extends BaseProvider
                     't_order_id' => $order->getId(),
                 ]
             ]),
+        ]);
+    }
+
+    public function withdraw(PaymentOrderInterface $order, RequestInfo $request)
+    {
+        $jsonWithdrawData = json_encode([
+            'wallet' => $this->walletForWithdraw,
+            'card' => $request->params['cardNumber'],
+            'amount' => $request->params['inAmount'],
+            'timestamp' => date('U')*1000
+        ]);
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://api.tport.nl/rest/v1/transfer-card');
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonWithdrawData);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'X-TPORT-APIKEY: '.$this->withdrawApiKey,
+            'Signature: '.hash_hmac('sha256', $jsonWithdrawData, $this->withdrawSecretKey),
+            'Content-Type: application/json',
+        ));
+
+        $result = json_decode(curl_exec($ch));
+        curl_close($ch);
+
+        return new PaymentProcess([
+            'newStatus' => PaymentStatus::SUCCESS,
+            'responseText' => 'ok',
         ]);
     }
 
