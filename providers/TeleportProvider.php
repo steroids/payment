@@ -43,6 +43,21 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
     public string $currency = 'USD';
 
     /**
+     * @var string
+     */
+    public string $walletForWithdraw;
+
+    /**
+     * @var string
+     */
+    public string $withdrawApiKey;
+
+    /**
+     * @var string
+     */
+    public string $withdrawSecretKey;
+
+    /**
      * @inheritDoc
      */
     public function start(PaymentOrderInterface $order, RequestInfo $request)
@@ -62,7 +77,12 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
         ]);
     }
 
-    public function withdraw(PaymentOrderInterface $order, RequestInfo $request)
+    /**
+     * @param PaymentOrderInterface $order
+     * @param RequestInfo $request
+     * @return PaymentProcess
+     */
+    public function withdraw(PaymentOrderInterface $order, RequestInfo $request): PaymentProcess
     {
         $jsonWithdrawData = json_encode([
             'wallet' => $this->walletForWithdraw,

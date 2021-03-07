@@ -155,7 +155,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
             throw new InvalidConfigException("Not found payment provider '{$this->method->providerName}'");
         }
 
-        if(!$provider instanceof ProviderWithdrawInterface){
+        if($callMethod === PaymentDirection::WITHDRAW && !$provider instanceof ProviderWithdrawInterface){
             throw new InvalidConfigException("Provider '{$this->method->providerName}' does not support withdrawal operations");
         }
 
