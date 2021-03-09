@@ -112,7 +112,7 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
         $resultData = json_decode($result);
 
         return new PaymentProcess([
-            'newStatus' => (bool)ArrayHelper::getValue($resultData, 'success') ? PaymentStatus::SUCCESS : null,
+            'newStatus' => (bool)ArrayHelper::getValue($resultData, 'success') ? PaymentStatus::SUCCESS : PaymentStatus::PROCESS,
             'responseText' => 'ok',
         ]);
     }

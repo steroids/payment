@@ -221,22 +221,16 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
             return;
         }
 
-        $this->changeOrderStatus(PaymentStatus::PROCESS);
         $transaction = \Yii::$app->db->beginTransaction();
-
         try {
             //Confirm withdraw operation
-            if ($this->isWithdraw()) {
-                $process = $process->newStatus === PaymentStatus::SUCCESS
-                    ? $this->callProvider(PaymentMethodEnum::WITHDRAW, $request)
-                    : new PaymentProcess([
-                        'newStatus' => PaymentStatus::FAILURE,
-                        'responseText' => 'ok',
-                    ]);
+            if ($this->isWithdraw() && $process->newStatus === PaymentStatus::SUCCESS) {
+                $process = $this->callProvider(PaymentMethodEnum::WITHDRAW, $request);
             }
 
             // Save new status
-            $this->changeOrderStatus($process->newStatus);
+            $this->status = $process->newStatus;
+            $this->saveOrPanic();
 
             // Execute items operations, if SUCCESS
             foreach ($this->items as $orderItem) {
@@ -259,11 +253,6 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         }
     }
 
-    private function changeOrderStatus($status)
-    {
-        $this->status = $status;
-        $this->saveOrPanic();
-    }
 
     /**
      * @return ActiveQuery
