@@ -7,6 +7,7 @@ use steroids\billing\models\BillingAccount;
 use steroids\billing\models\BillingCurrency;
 use steroids\core\structure\RequestInfo;
 use steroids\payment\enums\PaymentDirection;
+use steroids\payment\enums\PaymentMethodEnum;
 use steroids\payment\exceptions\PaymentException;
 use steroids\payment\forms\meta\PaymentStartFormMeta;
 use steroids\payment\models\PaymentMethod;
@@ -146,8 +147,8 @@ class PaymentStartForm extends PaymentStartFormMeta
                 $this->process = $this->order->start(
                     $this->request,
                     $this->direction === PaymentDirection::WITHDRAW
-                        ? 'withdraw'
-                        : 'start'
+                        ? PaymentMethodEnum::WITHDRAW
+                        : PaymentMethodEnum::START
                 );
 
                 $transaction->commit();
