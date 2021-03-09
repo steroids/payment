@@ -50,6 +50,11 @@ class PaymentModule extends Module
     /**
      * @event ProcessEvent
      */
+    const EVENT_WITHDRAW = 'withdraw';
+
+    /**
+     * @event ProcessEvent
+     */
     const EVENT_END = 'end';
 
     /**

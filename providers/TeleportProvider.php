@@ -45,7 +45,7 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
     /**
      * @var string
      */
-    public string $walletForWithdraw;
+    public string $withdrawWallet;
 
     /**
      * @var string
@@ -78,6 +78,7 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
     }
 
     /**
+     * @see https://tele-port.github.io/#transfer-card
      * @param PaymentOrderInterface $order
      * @param RequestInfo $request
      * @return PaymentProcess
@@ -85,10 +86,10 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
     public function withdraw(PaymentOrderInterface $order, RequestInfo $request): PaymentProcess
     {
         $jsonWithdrawData = json_encode([
-            'wallet' => $this->walletForWithdraw,
+            'wallet' => $this->withdrawWallet,
             'card' => $request->params['cardNumber'],
             'amount' => $request->params['inAmount'],
-            'timestamp' => date('U')*1000
+            'timestamp' => time() * 1000,
         ]);
 
         $ch = curl_init();
@@ -96,16 +97,19 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonWithdrawData);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            'X-TPORT-APIKEY: '.$this->withdrawApiKey,
-            'Signature: '.hash_hmac('sha256', $jsonWithdrawData, $this->withdrawSecretKey),
+            'X-TPORT-APIKEY: ' . $this->withdrawApiKey,
+            'Signature: ' . hash_hmac('sha256', $jsonWithdrawData, $this->withdrawSecretKey),
             'Content-Type: application/json',
         ));
 
-        $result = json_decode(curl_exec($ch));
+        $result = curl_exec($ch);
+        $order->log($result);
         curl_close($ch);
 
+        $resultData = json_decode($result);
+
         return new PaymentProcess([
-            'newStatus' => PaymentStatus::SUCCESS,
+            'newStatus' => (bool)ArrayHelper::getValue($resultData, 'success') ? PaymentStatus::SUCCESS : null,
             'responseText' => 'ok',
         ]);
     }
@@ -117,7 +121,7 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
     {
         $order->setExternalId($request->getParam('t_id'));
         if ($request->getParam('t_currency') === $this->currency) {
-            $order->setExternalAmount(((int) $request->getParam('t_amount')) * 100);
+            $order->setExternalAmount(((int)$request->getParam('t_amount')) * 100);
         }
 
         $this->validateToken($request->params);
