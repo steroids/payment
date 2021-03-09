@@ -2,6 +2,8 @@
 
 namespace steroids\payment\providers;
 
+use app\billing\enums\CurrencyEnum;
+use steroids\billing\models\BillingCurrency;
 use steroids\core\structure\RequestInfo;
 use steroids\payment\enums\PaymentStatus;
 use steroids\payment\exceptions\PaymentProcessException;
@@ -80,15 +82,16 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
     /**
      * @see https://tele-port.github.io/#transfer-card
      * @param PaymentOrderInterface $order
-     * @param RequestInfo $request
      * @return PaymentProcess
      */
-    public function withdraw(PaymentOrderInterface $order, RequestInfo $request): PaymentProcess
+    public function withdraw(PaymentOrderInterface $order): PaymentProcess
     {
+        $currency = BillingCurrency::getByCode(CurrencyEnum::USD);
+
         $jsonWithdrawData = json_encode([
             'wallet' => $this->withdrawWallet,
-            'card' => $request->params['cardNumber'],
-            'amount' => $request->params['inAmount'],
+            'card' => $order->methodParams['cardNumber'],
+            'amount' => $currency->amountToFloat($order->inAmount),
             'timestamp' => time() * 1000,
         ]);
 

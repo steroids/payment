@@ -8,5 +8,5 @@ use steroids\payment\structure\PaymentProcess;
 
 interface ProviderWithdrawInterface
 {
-    public function withdraw(PaymentOrderInterface $order, RequestInfo $request): PaymentProcess;
+    public function withdraw(PaymentOrderInterface $order): PaymentProcess;
 }
