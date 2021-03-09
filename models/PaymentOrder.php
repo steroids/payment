@@ -11,6 +11,7 @@ use steroids\core\base\Model;
 use steroids\core\behaviors\UidBehavior;
 use steroids\core\structure\RequestInfo;
 use steroids\payment\enums\PaymentDirection;
+use steroids\payment\enums\PaymentMethodEnum;
 use steroids\payment\enums\PaymentStatus;
 use steroids\payment\exceptions\PaymentException;
 use steroids\payment\interfaces\ProviderWithdrawInterface;
@@ -113,7 +114,14 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
      */
     public function start(RequestInfo $request, $callMethod = 'start')
     {
-        $process = $this->callProvider($callMethod, $request);
+        if ($this->isWithdraw()) {
+            $process = new PaymentProcess([
+                'newStatus' => PaymentStatus::PROCESS,
+                'responseText' => 'ok',
+            ]);
+        } else {
+            $process = $this->callProvider($callMethod, $request);
+        }
 
         $this->status = PaymentStatus::PROCESS;
         $this->saveOrPanic();
@@ -215,6 +223,10 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
 
         $transaction = \Yii::$app->db->beginTransaction();
         try {
+            if ($this->isWithdraw() && $process->newStatus === PaymentStatus::SUCCESS) {
+                $process = $this->callProvider(PaymentMethodEnum::WITHDRAW, $request);
+            }
+
             // Save new status
             $this->status = $process->newStatus;
             $this->saveOrPanic();
