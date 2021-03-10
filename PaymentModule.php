@@ -62,6 +62,11 @@ class PaymentModule extends Module
      */
     public array $providersClasses = [];
 
+    /**
+     * @var bool
+     */
+    public bool $isManualWithdraw = true;
+
     public function init()
     {
         parent::init();

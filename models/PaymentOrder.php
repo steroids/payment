@@ -163,7 +163,11 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
             throw new InvalidConfigException("Not found payment provider '{$this->method->providerName}'");
         }
 
-        if ($callMethod === PaymentDirection::WITHDRAW && !($provider instanceof ProviderWithdrawInterface)) {
+        if (
+            !(PaymentModule::getInstance())->isManualWithdraw
+            && $callMethod === PaymentDirection::WITHDRAW
+            && !($provider instanceof ProviderWithdrawInterface)
+        ) {
             throw new InvalidConfigException("Provider '{$this->method->providerName}' does not support withdrawal operations");
         }
 
@@ -224,7 +228,11 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         $transaction = \Yii::$app->db->beginTransaction();
         try {
             //Confirm withdraw operation
-            if ($this->isWithdraw() && $process->newStatus === PaymentStatus::SUCCESS) {
+            if (
+                !(PaymentModule::getInstance())->isManualWithdraw
+                && $this->isWithdraw()
+                && $process->newStatus === PaymentStatus::SUCCESS)
+            {
                 $process = $this->callProvider(PaymentMethodEnum::WITHDRAW, $request);
             }
 
