@@ -12,7 +12,6 @@ use steroids\payment\exceptions\PaymentProcessException;
 use steroids\payment\models\PaymentOrderInterface;
 use steroids\payment\structure\PaymentProcess;
 use yii\helpers\ArrayHelper;
-use yii\helpers\Url;
 
 class UnitpayProvider extends BaseProvider
 {
@@ -96,6 +95,17 @@ class UnitpayProvider extends BaseProvider
             throw new PaymentProcessException('Not found payment status. Wrong response: ' . print_r($response, true));
         }
 
+        switch ($response['result']['status']){
+            case ('success'):
+                $newStatus = PaymentStatus::SUCCESS;
+                break;
+            case ('wait'):
+                $newStatus = PaymentStatus::PROCESS;
+                break;
+            default:
+                $newStatus = PaymentStatus::FAILURE;
+        }
+
         $statusMap = [
             'success' => Yii::t('steroids', 'Успешный платеж'),
             'wait' => Yii::t('steroids', 'Ожидание оплаты'),
@@ -106,8 +116,14 @@ class UnitpayProvider extends BaseProvider
             'secure' => Yii::t('steroids', 'На проверке у службы безопасности банка'),
         ];
 
+        if($newStatus === PaymentStatus::FAILURE){
+            $order->setErrorMessage(
+                ArrayHelper::getValue($statusMap, $response['result']['status'])
+            );
+        }
+
         return new PaymentProcess([
-            'newStatus' => ArrayHelper::getValue($statusMap, $response['result']['status']),
+            'newStatus' => $newStatus,
             'responseText' => 'ok',
         ]);
     }
