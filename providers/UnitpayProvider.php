@@ -85,7 +85,7 @@ class UnitpayProvider extends BaseProvider
         $order->setExternalId($request->getParam('paymentId'));
 
         $response = $this->httpSend('https://unitpay.ru/api', array_merge(
-            ['method' => 'initPayment'],
+            ['method' => 'getPayment'],
             ['params' => [
                 'paymentId' => $request->getParam('paymentId'),
                 'secretKey' => $this->secretKey
