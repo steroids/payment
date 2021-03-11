@@ -9,11 +9,13 @@ use steroids\billing\models\BillingCurrency;
 use steroids\core\structure\RequestInfo;
 use steroids\payment\enums\PaymentStatus;
 use steroids\payment\exceptions\PaymentProcessException;
+use steroids\payment\interfaces\ProviderWithdrawInterface;
 use steroids\payment\models\PaymentOrderInterface;
 use steroids\payment\structure\PaymentProcess;
+use Yii;
 use yii\helpers\ArrayHelper;
 
-class UnitpayProvider extends BaseProvider
+class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
 {
 
     public string $secretKey;
@@ -29,6 +31,9 @@ class UnitpayProvider extends BaseProvider
     public string $projectId;
 
     public string $currency = 'usd';
+
+    //email в Unitpay
+    public string $login;
 
     /**
      * @inheritDoc
@@ -142,6 +147,33 @@ class UnitpayProvider extends BaseProvider
     public function resolveErrorMessage(RequestInfo $request)
     {
         return null;
+    }
+
+    /**
+     * @see https://tele-port.github.io/#transfer-card
+     * @param PaymentOrderInterface $order
+     * @return PaymentProcess
+     */
+    public function withdraw(PaymentOrderInterface $order): PaymentProcess
+    {
+        $params = [
+            'login' => $this->login,
+            'sum' => round($order->getOutAmount() / 100, 2),
+            'transactionId' => '', //??
+            'purse' => $order->methodParams['cardNumber'],
+            'paymentType' => 'card',
+            'secretKey' => $this->secretKey,
+        ];
+
+        $response = $this->httpSend('https://unitpay.ru/api', array_merge(
+            ['method' => 'massPayment'],
+            ['params' => $params]
+        ));
+
+        return new PaymentProcess([
+            'newStatus' => (bool)ArrayHelper::getValue($response, 'result.status') ? PaymentStatus::SUCCESS : PaymentStatus::PROCESS,
+            'responseText' => 'ok',
+        ]);
     }
 
     /**
