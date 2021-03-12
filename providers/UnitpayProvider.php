@@ -26,7 +26,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
      * @see https://help.unitpay.ru/book-of-reference/payment-system-codes
      * @var string
      */
-    public string $paymentType;
+    public string $paymentType = 'card';
 
     public string $projectId;
 
@@ -46,10 +46,14 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
             'resultUrl' => $this->module->getSuccessUrl($order->getMethodName()),
             'desc' => $order->description,
             'account' => $order->payerUser->email,
-            'signature' => $this->getFormSignature($order),
             'sum' => round($order->getOutAmount() / 100, 2),
             'currency' => $this->currency,
+//            'test' => 1,
+//            'login' => '89822701298k@gmail.com',
+//            'secretKey' => $this->secretKey,
         ];
+
+        $params['signature'] = $this->getSignature($params);
 
         $response = $this->httpSend('https://unitpay.ru/api', array_merge(
             ['method' => 'initPayment'],
@@ -68,17 +72,25 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
         ]);
     }
 
-    /**
-     * @param PaymentOrderInterface $order
-     * @return string
-     */
-    private function getFormSignature($order)
+    private function getSignature(array $params, $method = null)
     {
-        $currency = BillingCurrency::getByCode(CurrencyEnum::USD);
+        $params = $this->filterSignatureParameters($params);
 
-        $hashStr = $order->payerUser->email . '{up}' . $this->currency . '{up}' . $order->description . '{up}' . $currency->amountToFloat($order->inAmount) . '{up}' . $this->secretKey;
+        ksort($params);
+        $params[] = $this->secretKey;
 
-        return hash('sha256', $hashStr);
+        if ($method) {
+            array_unshift($params, $method);
+        }
+
+        return hash('sha256', implode('{up}', $params));
+    }
+
+    private function filterSignatureParameters(array $params)
+    {
+        $allowedKeys = array('account', 'desc', 'sum', 'currency');
+
+        return array_intersect_key($params, array_flip($allowedKeys));
     }
 
     /**
@@ -171,7 +183,9 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
         ));
 
         return new PaymentProcess([
-            'newStatus' => (bool)ArrayHelper::getValue($response, 'result.status') ? PaymentStatus::SUCCESS : PaymentStatus::PROCESS,
+            'newStatus' => (bool)ArrayHelper::getValue($response, 'result.status')
+                ? PaymentStatus::SUCCESS
+                : PaymentStatus::PROCESS,
             'responseText' => 'ok',
         ]);
     }
@@ -183,16 +197,9 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
      */
     protected function httpSend(string $url, array $params = [])
     {
-        $data = http_build_query($params);
-        $getUrl = $url . "?" . $data;
+        $requestUrl = $url . '?' . http_build_query($params, null, '&', PHP_QUERY_RFC3986);
 
-        $curlSession = curl_init();
-        curl_setopt($curlSession, CURLOPT_URL, $getUrl);
-        curl_setopt($curlSession, CURLOPT_BINARYTRANSFER, true);
-        curl_setopt($curlSession, CURLOPT_RETURNTRANSFER, true);
-
-        $response = json_decode(curl_exec($curlSession), true);
-        curl_close($curlSession);
+        $response = json_decode(file_get_contents($requestUrl));
 
         return $response;
     }
