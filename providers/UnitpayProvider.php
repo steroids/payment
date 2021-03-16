@@ -58,7 +58,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
         }
 
         return new PaymentProcess([
-            'request' => RequestInfo::createFromUrl($redirectUrl),
+            'request' => RequestInfo::createFromUrl($response['result']['redirectUrl']),
         ]);
     }
 
@@ -161,7 +161,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
         $params = [
             'login' => $this->login,
             'sum' => round($order->getOutAmount() / 100, 2),
-            'transactionId' => '', //??
+            'transactionId' => $order->id,
             'purse' => $order->methodParams['cardNumber'],
             'paymentType' => 'card',
             'secretKey' => $this->secretKey,
