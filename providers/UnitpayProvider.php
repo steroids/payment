@@ -4,8 +4,6 @@
 namespace steroids\payment\providers;
 
 
-use app\billing\enums\CurrencyEnum;
-use steroids\billing\models\BillingCurrency;
 use steroids\core\structure\RequestInfo;
 use steroids\payment\enums\PaymentStatus;
 use steroids\payment\exceptions\PaymentProcessException;
@@ -19,8 +17,6 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
 {
 
     public string $secretKey;
-
-    public string $publicKey;
 
     /**
      * @see https://help.unitpay.ru/book-of-reference/payment-system-codes
@@ -48,9 +44,6 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
             'account' => $order->payerUser->email,
             'sum' => round($order->getOutAmount() / 100, 2),
             'currency' => $this->currency,
-//            'test' => 1,
-//            'login' => '89822701298k@gmail.com',
-//            'secretKey' => $this->secretKey,
         ];
 
         $params['signature'] = $this->getSignature($params);
@@ -65,10 +58,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
         }
 
         return new PaymentProcess([
-            'request' => new RequestInfo([
-                'url' => $response['result']['redirectUrl'],
-                'method' => RequestInfo::METHOD_GET,
-            ]),
+            'request' => RequestInfo::createFromUrl($redirectUrl),
         ]);
     }
 
@@ -112,7 +102,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
             throw new PaymentProcessException('Not found payment status. Wrong response: ' . print_r($response, true));
         }
 
-        switch ($response['result']['status']){
+        switch ($response['result']['status']) {
             case ('success'):
                 $newStatus = PaymentStatus::SUCCESS;
                 break;
@@ -133,7 +123,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
             'secure' => Yii::t('steroids', 'На проверке у службы безопасности банка'),
         ];
 
-        if($newStatus === PaymentStatus::FAILURE){
+        if ($newStatus === PaymentStatus::FAILURE) {
             $order->setErrorMessage(
                 ArrayHelper::getValue($statusMap, $response['result']['status'])
             );
@@ -199,8 +189,6 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
     {
         $requestUrl = $url . '?' . http_build_query($params, null, '&', PHP_QUERY_RFC3986);
 
-        $response = json_decode(file_get_contents($requestUrl));
-
-        return $response;
+        return json_decode(file_get_contents($requestUrl), true);
     }
 }
