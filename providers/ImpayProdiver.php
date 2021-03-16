@@ -7,11 +7,13 @@ namespace steroids\payment\providers;
 use steroids\core\structure\RequestInfo;
 use steroids\payment\enums\PaymentStatus;
 use steroids\payment\exceptions\PaymentProcessException;
+use steroids\payment\interfaces\ProviderWithdrawInterface;
 use steroids\payment\models\PaymentOrderInterface;
 use steroids\payment\structure\PaymentProcess;
+use Yii;
 use yii\helpers\ArrayHelper;
 
-class ImpayProdiver extends BaseProvider
+class ImpayProdiver extends BaseProvider implements ProviderWithdrawInterface
 {
 
     public string $merchantKey;
@@ -52,7 +54,45 @@ class ImpayProdiver extends BaseProvider
      */
     public function callback(PaymentOrderInterface $order, RequestInfo $request)
     {
+        $order->setExternalId($request->getParam('paymentId'));
 
+        $response = $this->httpSend('https://api.impay.ru/v1/out/state', [
+            'id' => $request->getParam('paymentId')
+        ]);
+
+        if (!isset($response['status'])) {
+            throw new PaymentProcessException('Not found payment status. Wrong response: ' . print_r($response, true));
+        }
+
+        switch ($response['result']['status']) {
+            case (0):
+                $newStatus = PaymentStatus::PROCESS;
+                break;
+            case (1):
+                $newStatus = PaymentStatus::SUCCESS;
+                break;
+            default:
+                $newStatus = PaymentStatus::FAILURE;
+        }
+
+        $statusMap = [
+            Yii::t('steroids', 'В обработке'),
+            Yii::t('steroids', 'Ожидание оплаты'),
+            Yii::t('steroids', 'Ошибка'),
+            Yii::t('steroids', 'Отменен'),
+            Yii::t('steroids', 'Холдирован')
+        ];
+
+        if ($newStatus === PaymentStatus::FAILURE) {
+            $order->setErrorMessage(
+                ArrayHelper::getValue($statusMap, $response['status'])
+            );
+        }
+
+        return new PaymentProcess([
+            'newStatus' => $newStatus,
+            'responseText' => 'ok',
+        ]);
     }
 
     /**
@@ -80,7 +120,8 @@ class ImpayProdiver extends BaseProvider
     {
         $params = [
             'card' => 'сard',
-            'cardnum' => $order->methodParams['cardNumber'],
+//            'cardnum' => $order->methodParams['cardNumber'],
+            'cardnum' => '4314090010071979',
             'amount' => round($order->getOutAmount() / 100, 2),
             'extid' => $order->id,
             'document_id' => $order->id,
@@ -116,8 +157,8 @@ class ImpayProdiver extends BaseProvider
             CURLOPT_POSTFIELDS => json_encode($params),
             CURLOPT_HTTPHEADER => array(
                 'Content-Type:application/json',
-                'X-Login:'.$this->login,
-                'X-Token:'.$this->generateToken($params),
+                'X-Login:' . $this->login,
+                'X-Token:' . $this->generateToken($params),
             ),
         ]);
         $response = curl_exec($curl);
