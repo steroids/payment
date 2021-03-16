@@ -14,9 +14,11 @@ use yii\helpers\ArrayHelper;
 class ImpayProdiver extends BaseProvider
 {
 
-    public string $merchantKey = 'fN&Z7a94G1K#3QTx5U67K48rXb9!19AXO0542DA';
+    public string $merchantKey;
 
-    public int $paymentTimeout = 20;
+    public int $login;
+
+    public int $paymentTimeout = 10;
 
     /**
      * @inheritDoc
@@ -25,25 +27,23 @@ class ImpayProdiver extends BaseProvider
     {
         $params = [
             'amount' => round($order->getOutAmount() / 100, 2),
-//            'document_id' ???
+            'document_id' => $order->id,
             'fullname' => $order->payerUser->firstName,
             'extid' => $order->id,
             'timeout' => $this->paymentTimeout,
             'successurl' => $this->module->getSuccessUrl($order->getMethodName()),
             'failurl' => $this->module->getFailureUrl($order->getMethodName()),
+            'cancelurl' => $this->module->getFailureUrl($order->getMethodName()),
         ];
 
-        $response = $this->httpSend('https://unitpay.ru/api', $params);
+        $response = $this->httpSend('https://test.impay.ru:806/v1/pay/lk', $params);
 
         if (!isset($response['url'])) {
             throw new PaymentProcessException('Not found payment url. Wrong response: ' . print_r($response, true));
         }
 
         return new PaymentProcess([
-            'request' => new RequestInfo([
-                'url' => $response['url'],
-                'method' => RequestInfo::METHOD_GET,
-            ]),
+            'request' => RequestInfo::createFromUrl($response['url']),
         ]);
     }
 
@@ -78,7 +78,27 @@ class ImpayProdiver extends BaseProvider
      */
     public function withdraw(PaymentOrderInterface $order): PaymentProcess
     {
+        $params = [
+            'card' => 'сard',
+            'cardnum' => $order->methodParams['cardNumber'],
+            'amount' => round($order->getOutAmount() / 100, 2),
+            'extid' => $order->id,
+            'document_id' => $order->id,
+            'fullname' => $order->payerUser->firstName,
+        ];
 
+        $response = $this->httpSend('https://test.impay.ru:806/v1/out/paycard', $params);
+
+        if ($response['status'] === 0) {
+            throw new PaymentProcessException('Wrong response: ' . print_r($response, true));
+        }
+
+        return new PaymentProcess([
+            'newStatus' => $response['status'] === 1
+                ? PaymentStatus::SUCCESS
+                : PaymentStatus::PROCESS,
+            'responseText' => 'ok',
+        ]);
     }
 
     /**
@@ -93,10 +113,12 @@ class ImpayProdiver extends BaseProvider
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => http_build_query($params),
-            CURLOPT_HTTPHEADER => [
-                'X-Token' => $this->generateToken($params)
-            ]
+            CURLOPT_POSTFIELDS => json_encode($params),
+            CURLOPT_HTTPHEADER => array(
+                'Content-Type:application/json',
+                'X-Login:'.$this->login,
+                'X-Token:'.$this->generateToken($params),
+            ),
         ]);
         $response = curl_exec($curl);
         curl_close($curl);
@@ -106,6 +128,6 @@ class ImpayProdiver extends BaseProvider
 
     private function generateToken($params)
     {
-        return sha1(sha1($this->merchantKey) + sha1(json_encode($params)));
+        return sha1(sha1($this->merchantKey) . sha1(json_encode($params)));
     }
 }
