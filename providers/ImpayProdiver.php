@@ -56,7 +56,7 @@ class ImpayProdiver extends BaseProvider implements ProviderWithdrawInterface
     {
         $order->setExternalId($request->getParam('paymentId'));
 
-        $response = $this->httpSend('https://api.impay.ru/v1/out/state', [
+        $response = $this->httpSend('https://api.impay.ru/v1/out/state',[
             'id' => $request->getParam('paymentId')
         ]);
 
@@ -64,7 +64,7 @@ class ImpayProdiver extends BaseProvider implements ProviderWithdrawInterface
             throw new PaymentProcessException('Not found payment status. Wrong response: ' . print_r($response, true));
         }
 
-        switch ($response['result']['status']) {
+        switch ((int)$response['status']){
             case (0):
                 $newStatus = PaymentStatus::PROCESS;
                 break;
@@ -83,9 +83,9 @@ class ImpayProdiver extends BaseProvider implements ProviderWithdrawInterface
             Yii::t('steroids', 'Холдирован')
         ];
 
-        if ($newStatus === PaymentStatus::FAILURE) {
+        if($newStatus === PaymentStatus::FAILURE){
             $order->setErrorMessage(
-                ArrayHelper::getValue($statusMap, $response['status'])
+                ArrayHelper::getValue($statusMap, (int)$response['status'])
             );
         }
 
@@ -130,12 +130,12 @@ class ImpayProdiver extends BaseProvider implements ProviderWithdrawInterface
 
         $response = $this->httpSend('https://test.impay.ru:806/v1/out/paycard', $params);
 
-        if ($response['status'] === 0) {
+        if ((int)$response['status'] === 0) {
             throw new PaymentProcessException('Wrong response: ' . print_r($response, true));
         }
 
         return new PaymentProcess([
-            'newStatus' => $response['status'] === 1
+            'newStatus' => (int)$response['status'] === 1
                 ? PaymentStatus::SUCCESS
                 : PaymentStatus::PROCESS,
             'responseText' => 'ok',
@@ -157,8 +157,8 @@ class ImpayProdiver extends BaseProvider implements ProviderWithdrawInterface
             CURLOPT_POSTFIELDS => json_encode($params),
             CURLOPT_HTTPHEADER => array(
                 'Content-Type:application/json',
-                'X-Login:' . $this->login,
-                'X-Token:' . $this->generateToken($params),
+                'X-Login:'.$this->login,
+                'X-Token:'.$this->generateToken($params),
             ),
         ]);
         $response = curl_exec($curl);
