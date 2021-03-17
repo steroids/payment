@@ -15,7 +15,6 @@ use yii\helpers\ArrayHelper;
 
 class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
 {
-
     public string $secretKey;
 
     /**
@@ -48,7 +47,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
 
         $params['signature'] = $this->getSignature($params);
 
-        $response = $this->httpSend('https://unitpay.ru/api', array_merge(
+        $response = $this->httpSend('https://unitpay.money/api', array_merge(
             ['method' => 'initPayment'],
             ['params' => $params]
         ));
@@ -90,7 +89,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
     {
         $order->setExternalId($request->getParam('paymentId'));
 
-        $response = $this->httpSend('https://unitpay.ru/api', array_merge(
+        $response = $this->httpSend('https://unitpay.money/api', array_merge(
             ['method' => 'getPayment'],
             ['params' => [
                 'paymentId' => $request->getParam('paymentId'),
@@ -102,7 +101,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
             throw new PaymentProcessException('Not found payment status. Wrong response: ' . print_r($response, true));
         }
 
-        switch ($response['result']['status']) {
+        switch ($response['result']['status']){
             case ('success'):
                 $newStatus = PaymentStatus::SUCCESS;
                 break;
@@ -123,7 +122,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
             'secure' => Yii::t('steroids', 'На проверке у службы безопасности банка'),
         ];
 
-        if ($newStatus === PaymentStatus::FAILURE) {
+        if($newStatus === PaymentStatus::FAILURE){
             $order->setErrorMessage(
                 ArrayHelper::getValue($statusMap, $response['result']['status'])
             );
@@ -167,7 +166,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
             'secretKey' => $this->secretKey,
         ];
 
-        $response = $this->httpSend('https://unitpay.ru/api', array_merge(
+        $response = $this->httpSend('https://unitpay.money/api', array_merge(
             ['method' => 'massPayment'],
             ['params' => $params]
         ));
@@ -189,6 +188,8 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
     {
         $requestUrl = $url . '?' . http_build_query($params, null, '&', PHP_QUERY_RFC3986);
 
-        return json_decode(file_get_contents($requestUrl), true);
+        $response = json_decode(file_get_contents($requestUrl), true);
+
+        return $response;
     }
 }
