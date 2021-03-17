@@ -11,8 +11,10 @@ use steroids\core\base\Model;
 use steroids\core\behaviors\UidBehavior;
 use steroids\core\structure\RequestInfo;
 use steroids\payment\enums\PaymentDirection;
+use steroids\payment\enums\PaymentMethodEnum;
 use steroids\payment\enums\PaymentStatus;
 use steroids\payment\exceptions\PaymentException;
+use steroids\payment\interfaces\ProviderWithdrawInterface;
 use steroids\payment\models\meta\PaymentOrderMeta;
 use steroids\payment\PaymentModule;
 use steroids\payment\PaymentProcessEvent;
@@ -105,13 +107,21 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
 
     /**
      * @param RequestInfo $request
+     * @param string $callMethod
      * @return PaymentProcess
      * @throws InvalidConfigException
      * @throws PaymentException
      */
-    public function start(RequestInfo $request)
+    public function start(RequestInfo $request, $callMethod = 'start')
     {
-        $process = $this->callProvider('start', $request);
+        if ($this->isWithdraw()) {
+            $process = new PaymentProcess([
+                'newStatus' => PaymentStatus::PROCESS,
+                'responseText' => 'ok',
+            ]);
+        } else {
+            $process = $this->callProvider($callMethod, $request);
+        }
 
         $this->status = PaymentStatus::PROCESS;
         $this->saveOrPanic();
@@ -153,6 +163,20 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
             throw new InvalidConfigException("Not found payment provider '{$this->method->providerName}'");
         }
 
+        if (
+            !(PaymentModule::getInstance())->isManualWithdraw
+            && $callMethod === PaymentDirection::WITHDRAW
+            && !($provider instanceof ProviderWithdrawInterface)
+        ) {
+            throw new InvalidConfigException("Provider '{$this->method->providerName}' does not support withdrawal operations");
+        }
+
+        $eventsMap = [
+            'start' => PaymentModule::EVENT_START,
+            'callback' => PaymentModule::EVENT_CALLBACK,
+            'withdraw' => PaymentModule::EVENT_WITHDRAW,
+        ];
+
         // Run start
         $transaction = \Yii::$app->db->beginTransaction();
         try {
@@ -162,8 +186,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
             $providerLog->responseRaw = $process->responseText;
 
             // Trigger event
-            $eventName = $callMethod === 'start' ? PaymentModule::EVENT_START : PaymentModule::EVENT_CALLBACK;
-            PaymentModule::getInstance()->trigger($eventName, new PaymentProcessEvent([
+            PaymentModule::getInstance()->trigger($eventsMap[$callMethod], new PaymentProcessEvent([
                 'order' => $this,
                 'request' => $request,
                 'process' => $process,
@@ -204,6 +227,15 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
 
         $transaction = \Yii::$app->db->beginTransaction();
         try {
+            //Confirm withdraw operation
+            if (
+                !(PaymentModule::getInstance())->isManualWithdraw
+                && $this->isWithdraw()
+                && $process->newStatus === PaymentStatus::SUCCESS)
+            {
+                $process = $this->callProvider(PaymentMethodEnum::WITHDRAW, $request);
+            }
+
             // Save new status
             $this->status = $process->newStatus;
             $this->saveOrPanic();
@@ -228,6 +260,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
             throw $e;
         }
     }
+
 
     /**
      * @return ActiveQuery
