@@ -5,6 +5,7 @@ namespace steroids\payment\providers;
 
 
 use steroids\core\structure\RequestInfo;
+use steroids\core\structure\UrlInfo;
 use steroids\payment\enums\PaymentStatus;
 use steroids\payment\exceptions\PaymentProcessException;
 use steroids\payment\interfaces\ProviderWithdrawInterface;
@@ -56,8 +57,15 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
             throw new PaymentProcessException('Not found payment url. Wrong response: ' . print_r($response, true));
         }
 
+        $info = new UrlInfo($response['result']['redirectUrl']);
+
         return new PaymentProcess([
-            'request' => RequestInfo::createFromUrl($response['result']['redirectUrl']),
+            'request' => new RequestInfo([
+                'url' => $info->protocol . '://' . $info->host . $info->path,
+                'params' => array_map(function ($param){
+                    return urldecode($param);
+                },$info->params),
+            ]),
         ]);
     }
 
