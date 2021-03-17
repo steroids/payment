@@ -151,7 +151,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
     }
 
     /**
-     * @see https://tele-port.github.io/#transfer-card
+     * @see https://help.unitpay.money/payouts/create_payout
      * @param PaymentOrderInterface $order
      * @return PaymentProcess
      */
