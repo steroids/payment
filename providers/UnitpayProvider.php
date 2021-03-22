@@ -95,45 +95,20 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
      */
     public function callback(PaymentOrderInterface $order, RequestInfo $request)
     {
-        $order->setExternalId($request->getParam('paymentId'));
+        $order->setExternalId($request->getParam('params.unitpayId'));
 
-        $response = $this->httpSend('https://unitpay.money/api', array_merge(
-            ['method' => 'getPayment'],
-            ['params' => [
-                'paymentId' => $request->getParam('paymentId'),
-                'secretKey' => $this->secretKey
-            ]]
-        ));
+        $status = $request->getParam('method');
 
-        if (!isset($response['result']['status'])) {
-            throw new PaymentProcessException('Not found payment status. Wrong response: ' . print_r($response, true));
-        }
-
-        switch ($response['result']['status']){
-            case ('success'):
+        switch ($status){
+            case ('PAY'):
                 $newStatus = PaymentStatus::SUCCESS;
                 break;
-            case ('wait'):
+            case ('CHECK'):
+            case ('PREAUTH'):
                 $newStatus = PaymentStatus::PROCESS;
                 break;
             default:
                 $newStatus = PaymentStatus::FAILURE;
-        }
-
-        $statusMap = [
-            'success' => Yii::t('steroids', 'Успешный платеж'),
-            'wait' => Yii::t('steroids', 'Ожидание оплаты'),
-            'error' => Yii::t('steroids', 'Ошибка платежа'),
-            'error_pay' => Yii::t('steroids', 'Ошибка/отказ магазина на стадии PAY, в статистике как "незавершен"'),
-            'error_check' => Yii::t('steroids', 'Ошибка/отказ магазина на стадии CHECK, в статистике как "отклонен"'),
-            'refund' => Yii::t('steroids', 'Возврат средств покупателю'),
-            'secure' => Yii::t('steroids', 'На проверке у службы безопасности банка'),
-        ];
-
-        if($newStatus === PaymentStatus::FAILURE){
-            $order->setErrorMessage(
-                ArrayHelper::getValue($statusMap, $response['result']['status'])
-            );
         }
 
         return new PaymentProcess([
