@@ -113,7 +113,9 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
 
         return new PaymentProcess([
             'newStatus' => $newStatus,
-            'responseText' => 'ok',
+            'responseText' => $newStatus === PaymentStatus::FAILURE
+                ? $request->getParam('params.errorMessage')
+                : 'ок',
         ]);
     }
 
