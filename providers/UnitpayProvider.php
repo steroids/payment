@@ -11,7 +11,7 @@ use steroids\payment\exceptions\PaymentProcessException;
 use steroids\payment\interfaces\ProviderWithdrawInterface;
 use steroids\payment\models\PaymentOrderInterface;
 use steroids\payment\structure\PaymentProcess;
-use Yii;
+use yii\base\NotSupportedException;
 use yii\helpers\ArrayHelper;
 
 class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
@@ -31,6 +31,10 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
     //email в Unitpay
     public string $login;
 
+    private const METHOD_TYPE_CHECK = 'check';
+    private const METHOD_TYPE_PAY = 'pay';
+    private const METHOD_TYPE_PREAUTH = 'preauth';
+
     /**
      * @inheritDoc
      */
@@ -38,13 +42,22 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
     {
         $params = [
             'paymentType' => $this->paymentType,
+            'account' => $order->payerUser->email,
+            'sum' => round($order->getOutAmount() / 100, 2),
             'projectId' => $this->projectId,
             'resultUrl' => $this->module->getSuccessUrl($order->getMethodName()),
             'desc' => $order->description,
-            'account' => $order->payerUser->email,
-            'sum' => round($order->getOutAmount() / 100, 2),
             'currency' => $this->currency,
         ];
+
+        if ($this->testMode) {
+            $params = array_merge($params, [
+                'ip' => '127.0.0.1',
+                'test' => 1,
+                'currency' => 'rub',
+                'secretKey' => $this->secretKey,
+            ]);
+        }
 
         $params['signature'] = $this->getSignature($params);
 
@@ -53,9 +66,11 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
             ['params' => $params]
         ));
 
-        if (!isset($response['result']['redirectUrl'])) {
+        if (!isset($response['result']['redirectUrl']) || !isset($response['result']['paymentId'])) {
             throw new PaymentProcessException('Not found payment url. Wrong response: ' . print_r($response, true));
         }
+
+        $order->setExternalId($response['result']['paymentId']);
 
         $info = new UrlInfo($response['result']['redirectUrl']);
 
@@ -95,16 +110,16 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
      */
     public function callback(PaymentOrderInterface $order, RequestInfo $request)
     {
-        $order->setExternalId($request->getParam('params.unitpayId'));
+        $status = strtolower($request->getParam('method'));
 
-        $status = $request->getParam('method');
+        // @todo verify order & signature
 
         switch ($status){
-            case ('PAY'):
+            case self::METHOD_TYPE_PAY:
                 $newStatus = PaymentStatus::SUCCESS;
                 break;
-            case ('CHECK'):
-            case ('PREAUTH'):
+            case self::METHOD_TYPE_CHECK:
+            case self::METHOD_TYPE_PREAUTH:
                 $newStatus = PaymentStatus::PROCESS;
                 break;
             default:
@@ -114,8 +129,8 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
         return new PaymentProcess([
             'newStatus' => $newStatus,
             'responseText' => $newStatus === PaymentStatus::FAILURE
-                ? $request->getParam('params.errorMessage')
-                : 'ок',
+                ? self::buildErrorResponse($request->getParam('params.errorMessage'))
+                : self::buildSuccessResponse(),
         ]);
     }
 
@@ -124,7 +139,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
      */
     public function resolveOrderId(RequestInfo $request)
     {
-        return ArrayHelper::getValue($request->params, 'paymentId');
+        throw new NotSupportedException("Unitpay response doesn't contain PaymentOrder ID");
     }
 
     /**
@@ -132,7 +147,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
      */
     public function resolveErrorMessage(RequestInfo $request)
     {
-        return null;
+        return $request->getParam('params.errorMessage');
     }
 
     /**
@@ -176,5 +191,33 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
         $response = json_decode(file_get_contents($requestUrl), true);
 
         return $response;
+    }
+
+    private static function buildSuccessResponse(): string
+    {
+        return json_encode([['result' => 'OK']]);
+    }
+
+    private static function buildErrorResponse(string $errorText): string
+    {
+        return json_encode([['error' => $errorText]]);
+    }
+
+    public static function isCheckRequest(RequestInfo $request): bool
+    {
+        return strtolower($request->getParam('method')) === self::METHOD_TYPE_CHECK;
+    }
+
+    /**
+     * Special handle for the 'check' requests
+     * @see https://help.unitpay.ru/payments/payment-handler
+     *
+     * @todo we should check if this payment request should be processed
+     *
+     * @return string
+     */
+    public static function getResponseForCheckRequest(): string
+    {
+        return self::buildSuccessResponse();
     }
 }
