@@ -10,7 +10,6 @@ use steroids\payment\exceptions\PaymentProcessException;
 use steroids\payment\interfaces\ProviderWithdrawInterface;
 use steroids\payment\models\PaymentOrderInterface;
 use steroids\payment\structure\PaymentProcess;
-use Yii;
 use yii\helpers\ArrayHelper;
 
 class ImpayProdiver extends BaseProvider implements ProviderWithdrawInterface
@@ -54,45 +53,43 @@ class ImpayProdiver extends BaseProvider implements ProviderWithdrawInterface
      */
     public function callback(PaymentOrderInterface $order, RequestInfo $request)
     {
-        $order->setExternalId($request->getParam('paymentId'));
+        $status = strtolower($request->getParam('method'));
 
-        $response = $this->httpSend('https://api.impay.ru/v1/out/state',[
-            'id' => $request->getParam('paymentId')
-        ]);
-
-        if (!isset($response['status'])) {
-            throw new PaymentProcessException('Not found payment status. Wrong response: ' . print_r($response, true));
+        if (!static::validateResponseToken($request, $this->merchantKey) || !static::validatePayment($order, $request)) {
+            throw new PaymentProcessException(\Yii::t('steroids', 'Incorrect signature or params data'));
         }
 
-        switch ((int)$response['status']){
-            case (0):
-                $newStatus = PaymentStatus::PROCESS;
-                break;
-            case (1):
+        switch ($status) {
+            case self::METHOD_TYPE_PAY:
                 $newStatus = PaymentStatus::SUCCESS;
+                break;
+            case self::METHOD_TYPE_CHECK:
+            case self::METHOD_TYPE_PREAUTH:
+                $newStatus = PaymentStatus::PROCESS;
                 break;
             default:
                 $newStatus = PaymentStatus::FAILURE;
         }
 
-        $statusMap = [
-            Yii::t('steroids', 'В обработке'),
-            Yii::t('steroids', 'Ожидание оплаты'),
-            Yii::t('steroids', 'Ошибка'),
-            Yii::t('steroids', 'Отменен'),
-            Yii::t('steroids', 'Холдирован')
-        ];
-
-        if($newStatus === PaymentStatus::FAILURE){
-            $order->setErrorMessage(
-                ArrayHelper::getValue($statusMap, (int)$response['status'])
-            );
-        }
-
         return new PaymentProcess([
             'newStatus' => $newStatus,
-            'responseText' => 'ok',
+            'responseText' => $newStatus === PaymentStatus::FAILURE
+                ? self::buildErrorResponse($request->getParam('params.errorMessage'))
+                : self::buildSuccessResponse(),
         ]);
+    }
+
+    public static function validatePayment(RequestInfo $order, RequestInfo $request)
+    {
+
+    }
+
+    public static function validateResponseToken(RequestInfo $request, string $merchantKey): bool
+    {
+        $params = json_encode($request->get$params);
+        $hash = md5($request->getParam('extid') . $request->getParam('id') . $request->getParam('sum') . $request->getParam('status') . $merchantKey);
+
+        return $hash === $request->getParam('key');
     }
 
     /**
@@ -157,8 +154,8 @@ class ImpayProdiver extends BaseProvider implements ProviderWithdrawInterface
             CURLOPT_POSTFIELDS => json_encode($params),
             CURLOPT_HTTPHEADER => array(
                 'Content-Type:application/json',
-                'X-Login:'.$this->login,
-                'X-Token:'.$this->generateToken($params),
+                'X-Login:' . $this->login,
+                'X-Token:' . $this->generateToken($params),
             ),
         ]);
         $response = curl_exec($curl);
