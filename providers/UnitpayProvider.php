@@ -259,12 +259,12 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
 
     private static function buildSuccessResponse(): string
     {
-        return json_encode([['result' => ['message' => 'OK']]]);
+        return json_encode(['result' => ['message' => 'OK']]);
     }
 
     private static function buildErrorResponse(string $errorText): string
     {
-        return json_encode([['error' => ['message' => $errorText]]]);
+        return json_encode(['error' => ['message' => $errorText]]);
     }
 
     public static function isCheckRequest(RequestInfo $request): bool
