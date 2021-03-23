@@ -4,6 +4,8 @@
 namespace steroids\payment\providers;
 
 
+use app\billing\enums\CurrencyEnum;
+use steroids\billing\models\BillingCurrency;
 use steroids\core\structure\RequestInfo;
 use steroids\core\structure\UrlInfo;
 use steroids\payment\enums\PaymentStatus;
@@ -16,6 +18,7 @@ use yii\helpers\ArrayHelper;
 
 class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
 {
+    const RUB = 'RUB';
     public string $secretKey;
 
     /**
@@ -34,6 +37,14 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
     private const METHOD_TYPE_CHECK = 'check';
     private const METHOD_TYPE_PAY = 'pay';
     private const METHOD_TYPE_PREAUTH = 'preauth';
+
+    private const SECCESS_STATUS = 'success';
+    private const PROCESS_STATUS = 'not_completed';
+    private const ERROR_STATUS = 'error';
+
+    protected array $currencyCodesMap = [
+        self::RUB => CurrencyEnum::RUB,
+    ];
 
     /**
      * @inheritDoc
@@ -77,9 +88,9 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
         return new PaymentProcess([
             'request' => new RequestInfo([
                 'url' => $info->protocol . '://' . $info->host . $info->path,
-                'params' => array_map(function ($param){
+                'params' => array_map(function ($param) {
                     return urldecode($param);
-                },$info->params),
+                }, $info->params),
             ]),
         ]);
     }
@@ -105,6 +116,16 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
         return array_intersect_key($params, array_flip($allowedKeys));
     }
 
+    protected function generateResponseSignature($status, $request)
+    {
+        $params = $request->getParam('params');
+        unset($params['signature']);
+        ksort($params);
+        $stringToHash = $status . '{up}' . implode('{up}', $params) . '{up}' . $this->secretKey;
+
+        return hash('sha256', $stringToHash);
+    }
+
     /**
      * @inheritDoc
      */
@@ -112,9 +133,17 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
     {
         $status = strtolower($request->getParam('method'));
 
-        // @todo verify order & signature
+        $isCorrectSignature = $request->getParam('params.signature') === $this->generateResponseSignature($status, $request);
+        $currency = BillingCurrency::getByCode($this->currency);
+        $isResponseParamsCorrect =
+            $this->currencyCodesMap[$request->getParam('params.payerCurrency')] === $order->outCurrencyCode &&
+            $currency->amountToInt($request->getParam('params.orderSum')) === $order->getOutAmount();
 
-        switch ($status){
+        if(!$isCorrectSignature || !$isResponseParamsCorrect){
+            throw new PaymentProcessException(\Yii::t('steroids', 'Incorrect signature or params data'));
+        }
+
+        switch ($status) {
             case self::METHOD_TYPE_PAY:
                 $newStatus = PaymentStatus::SUCCESS;
                 break;
@@ -171,11 +200,22 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
             ['params' => $params]
         ));
 
+        switch (ArrayHelper::getValue($response, 'result.status')) {
+            case self::SECCESS_STATUS:
+                $newStatus = PaymentStatus::SUCCESS;
+                break;
+            case self::PROCESS_STATUS:
+                $newStatus = PaymentStatus::PROCESS;
+                break;
+            default:
+                $newStatus = PaymentStatus::FAILURE;
+        }
+
         return new PaymentProcess([
-            'newStatus' => (bool)ArrayHelper::getValue($response, 'result.status')
-                ? PaymentStatus::SUCCESS
-                : PaymentStatus::PROCESS,
-            'responseText' => 'ok',
+            'newStatus' => $newStatus,
+            'responseText' => $newStatus === PaymentStatus::FAILURE
+                ? self::buildErrorResponse($response['error']['message'] ?? 'withdraw error')
+                : self::buildSuccessResponse(),
         ]);
     }
 
@@ -195,12 +235,12 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
 
     private static function buildSuccessResponse(): string
     {
-        return json_encode([['result' => 'OK']]);
+        return json_encode([['result' => ['message' => 'OK']]]);
     }
 
     private static function buildErrorResponse(string $errorText): string
     {
-        return json_encode([['error' => $errorText]]);
+        return json_encode([['error' => ['message' => $errorText]]]);
     }
 
     public static function isCheckRequest(RequestInfo $request): bool
