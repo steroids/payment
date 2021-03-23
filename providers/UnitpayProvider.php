@@ -18,7 +18,6 @@ use yii\helpers\ArrayHelper;
 
 class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
 {
-    const RUB = 'RUB';
     public string $secretKey;
 
     /**
@@ -42,15 +41,28 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
     private const PROCESS_STATUS = 'not_completed';
     private const ERROR_STATUS = 'error';
 
-    protected array $currencyCodesMap = [
-        self::RUB => CurrencyEnum::RUB,
-    ];
+    protected const UNITPAY_CURRENCY_RUB = 'rub';
+    protected const UNITPAY_CURRENCY_USD = 'usd';
 
+    protected static function getUnitpayCurrencyToInternalCurrency()
+    {
+        return [
+            static::UNITPAY_CURRENCY_RUB => CurrencyEnum::RUB,
+            static::UNITPAY_CURRENCY_USD => CurrencyEnum::USD,
+        ];
+    }
+    
     /**
      * @inheritDoc
      */
     public function start(PaymentOrderInterface $order, RequestInfo $request)
     {
+        $unitpayCurrencyCode = array_search($order->outCurrencyCode, static::getUnitpayCurrencyToInternalCurrency());
+
+        if ($unitpayCurrencyCode === false) {
+            throw new PaymentProcessException("Payment order's currency doesn't have a map in Unitpay currencies");
+        }
+
         $params = [
             'paymentType' => $this->paymentType,
             'account' => $order->payerUser->email,
@@ -58,7 +70,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
             'projectId' => $this->projectId,
             'resultUrl' => $this->module->getSuccessUrl($order->getMethodName()),
             'desc' => $order->description,
-            'currency' => $this->currency,
+            'currency' => $unitpayCurrencyCode,
         ];
 
         if ($this->testMode) {
@@ -116,14 +128,14 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
         return array_intersect_key($params, array_flip($allowedKeys));
     }
 
-    protected function generateResponseSignature($status, $request)
+    protected static function validateResponseSignature(RequestInfo $request, string $secretKey): bool
     {
         $params = $request->getParam('params');
         unset($params['signature']);
         ksort($params);
-        $stringToHash = $status . '{up}' . implode('{up}', $params) . '{up}' . $this->secretKey;
+        $stringToHash = $request->getParam('method') . '{up}' . implode('{up}', $params) . '{up}' . $secretKey;
 
-        return hash('sha256', $stringToHash);
+        return $request->getParam('params.signature') === hash('sha256', $stringToHash);
     }
 
     /**
@@ -133,13 +145,7 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
     {
         $status = strtolower($request->getParam('method'));
 
-        $isCorrectSignature = $request->getParam('params.signature') === $this->generateResponseSignature($status, $request);
-        $currency = BillingCurrency::getByCode($this->currency);
-        $isResponseParamsCorrect =
-            $this->currencyCodesMap[$request->getParam('params.payerCurrency')] === $order->outCurrencyCode &&
-            $currency->amountToInt($request->getParam('params.orderSum')) === $order->getOutAmount();
-
-        if(!$isCorrectSignature || !$isResponseParamsCorrect){
+        if (!static::validateResponseSignature($request, $this->secretKey) || !static::validatePayment($order, $request)) {
             throw new PaymentProcessException(\Yii::t('steroids', 'Incorrect signature or params data'));
         }
 
@@ -161,6 +167,24 @@ class UnitpayProvider extends BaseProvider implements ProviderWithdrawInterface
                 ? self::buildErrorResponse($request->getParam('params.errorMessage'))
                 : self::buildSuccessResponse(),
         ]);
+    }
+
+    private static function validatePayment(PaymentOrderInterface $order, RequestInfo $request): bool
+    {
+        $unitpayCurrencyCode = mb_strtolower($request->getParam('params.payerCurrency'));
+        if (!$unitpayCurrencyCode) {
+            return false;
+        }
+
+        $internalCurrencyCode = static::getUnitpayCurrencyToInternalCurrency()[$unitpayCurrencyCode] ?? null;
+        if (!$internalCurrencyCode) {
+            return false;
+        }
+
+        $currency = BillingCurrency::getByCode($internalCurrencyCode);
+
+        return $internalCurrencyCode === $order->outCurrencyCode &&
+            (int)$currency->amountToInt($request->getParam('params.orderSum')) === $order->getOutAmount();
     }
 
     /**
