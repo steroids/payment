@@ -4,6 +4,7 @@
 namespace steroids\payment\providers;
 
 
+use steroids\billing\models\BillingCurrency;
 use steroids\core\structure\RequestInfo;
 use steroids\payment\enums\PaymentStatus;
 use steroids\payment\exceptions\PaymentProcessException;
@@ -12,14 +13,28 @@ use steroids\payment\models\PaymentOrderInterface;
 use steroids\payment\structure\PaymentProcess;
 use yii\helpers\ArrayHelper;
 
-class ImpayProdiver extends BaseProvider implements ProviderWithdrawInterface
+class ImpayProvider extends BaseProvider implements ProviderWithdrawInterface
 {
 
     public string $merchantKey;
 
+    public string $callbackKey;
+
     public int $login;
 
     public int $paymentTimeout = 10;
+
+    public string $currency = 'rub';
+
+    protected const URL = 'https://api.impay.ru';
+    protected const TEST_URL = 'https://test.impay.ru:806';
+
+    protected function getUrl($url)
+    {
+        return !$this->testMode
+            ? self::URL . $url
+            : self::TEST_URL . $url;
+    }
 
     /**
      * @inheritDoc
@@ -37,7 +52,7 @@ class ImpayProdiver extends BaseProvider implements ProviderWithdrawInterface
             'cancelurl' => $this->module->getFailureUrl($order->getMethodName()),
         ];
 
-        $response = $this->httpSend('https://test.impay.ru:806/v1/pay/lk', $params);
+        $response = $this->httpSend($this->getUrl('/v1/pay/lk'), $params);
 
         if (!isset($response['url'])) {
             throw new PaymentProcessException('Not found payment url. Wrong response: ' . print_r($response, true));
@@ -53,18 +68,16 @@ class ImpayProdiver extends BaseProvider implements ProviderWithdrawInterface
      */
     public function callback(PaymentOrderInterface $order, RequestInfo $request)
     {
-        $status = strtolower($request->getParam('method'));
-
-        if (!static::validateResponseToken($request, $this->merchantKey) || !static::validatePayment($order, $request)) {
+        $status = strtolower($request->getParam('status'));
+        if (!static::validateResponseToken($request, $this->merchantKey) || !static::validatePayment($order, $request, $this->currency)) {
             throw new PaymentProcessException(\Yii::t('steroids', 'Incorrect signature or params data'));
         }
 
         switch ($status) {
-            case self::METHOD_TYPE_PAY:
+            case 1:
                 $newStatus = PaymentStatus::SUCCESS;
                 break;
-            case self::METHOD_TYPE_CHECK:
-            case self::METHOD_TYPE_PREAUTH:
+            case 4:
                 $newStatus = PaymentStatus::PROCESS;
                 break;
             default:
@@ -79,15 +92,23 @@ class ImpayProdiver extends BaseProvider implements ProviderWithdrawInterface
         ]);
     }
 
-    public static function validatePayment(RequestInfo $order, RequestInfo $request)
+    public static function validatePayment(PaymentOrderInterface $order, RequestInfo $request, $currency)
     {
+        $currency = BillingCurrency::getByCode($currency);
 
+        return (int)$currency->amountToInt($request->getParam('sum')) === $order->getOutAmount();
     }
 
-    public static function validateResponseToken(RequestInfo $request, string $merchantKey): bool
+    public static function validateResponseToken(RequestInfo $request, string $callbackKey): bool
     {
-        $params = json_encode($request->get$params);
-        $hash = md5($request->getParam('extid') . $request->getParam('id') . $request->getParam('sum') . $request->getParam('status') . $merchantKey);
+        $params = json_encode($request->params);
+        $hash = md5(
+            $request->getParam('extid') .
+            $request->getParam('id') .
+            $request->getParam('sum') .
+            $request->getParam('status') .
+            $callbackKey
+        );
 
         return $hash === $request->getParam('key');
     }
@@ -97,7 +118,7 @@ class ImpayProdiver extends BaseProvider implements ProviderWithdrawInterface
      */
     public function resolveOrderId(RequestInfo $request)
     {
-        return ArrayHelper::getValue($request->params, 'paymentId');
+        return ArrayHelper::getValue($request->params, 'extid');
     }
 
     /**
@@ -117,15 +138,14 @@ class ImpayProdiver extends BaseProvider implements ProviderWithdrawInterface
     {
         $params = [
             'card' => 'сard',
-//            'cardnum' => $order->methodParams['cardNumber'],
-            'cardnum' => '4314090010071979',
+            'cardnum' => $order->methodParams['cardNumber'],
             'amount' => round($order->getOutAmount() / 100, 2),
             'extid' => $order->id,
             'document_id' => $order->id,
             'fullname' => $order->payerUser->firstName,
         ];
 
-        $response = $this->httpSend('https://test.impay.ru:806/v1/out/paycard', $params);
+        $response = $this->httpSend($this->getUrl('/v1/out/paycard'), $params);
 
         if ((int)$response['status'] === 0) {
             throw new PaymentProcessException('Wrong response: ' . print_r($response, true));
