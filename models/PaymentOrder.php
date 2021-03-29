@@ -231,8 +231,8 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
             if (
                 !(PaymentModule::getInstance())->isManualWithdraw
                 && $this->isWithdraw()
-                && $process->newStatus === PaymentStatus::SUCCESS)
-            {
+                && $process->newStatus === PaymentStatus::SUCCESS
+            ) {
                 $process = $this->callProvider(PaymentMethodEnum::WITHDRAW, $request);
             }
 
@@ -368,7 +368,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         $this->realOutAmount = $amount;
         $this->realInAmount = $this->realOutAmount === $this->outAmount
             ? $this->inAmount
-            : BillingCurrency::convert($this->outCurrencyCode, $this->inCurrencyCode, $this->realOutAmount,  $this->method->direction);
+            : BillingCurrency::convert($this->outCurrencyCode, $this->inCurrencyCode, $this->realOutAmount, $this->method->direction);
     }
 
     public function setErrorMessage(string $value)
