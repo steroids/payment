@@ -368,7 +368,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         $this->realOutAmount = $amount;
         $this->realInAmount = $this->realOutAmount === $this->outAmount
             ? $this->inAmount
-            : BillingCurrency::convert($this->outCurrencyCode, $this->inCurrencyCode, $this->realOutAmount);
+            : BillingCurrency::convert($this->outCurrencyCode, $this->inCurrencyCode, $this->realOutAmount,  $this->method->direction);
     }
 
     public function setErrorMessage(string $value)
@@ -410,7 +410,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
     {
         // Calculate out amount with commission
         if ($this->inAmount && !$this->outAmount) {
-            $outAmount = BillingCurrency::convert($this->inCurrencyCode, $this->outCurrencyCode, $this->inAmount);
+            $outAmount = BillingCurrency::convert($this->inCurrencyCode, $this->outCurrencyCode, $this->inAmount, $this->method->direction);
             $outAmount = $outAmount * (1 + ($this->outCommissionPercent / 100));
             $outAmount = $outAmount + $this->outCommissionFixed;
             $this->outAmount = ceil($outAmount);
