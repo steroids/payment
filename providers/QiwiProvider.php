@@ -70,6 +70,9 @@ class QiwiProvider extends BaseProvider
             // Описание услуги, которую получает Плательщик.
             'comment' => mb_substr($order->getDescription(), 0, 1000),
 
+            // Подверждать платеж через callback-запрос к нашему серверу, а не вручную в панели qiwi
+            'flags' => ['SALE'],
+
             'customer' => [
                 // Уникальный идентификатор Покупателя в системе ТСП.
                 'account' => $order->getPayerUserId(),
