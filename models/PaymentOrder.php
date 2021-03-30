@@ -425,6 +425,8 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
             $outAmount = $outAmount * (1 + ($this->outCommissionPercent / 100));
             $outAmount = $outAmount + $this->outCommissionFixed;
             $this->outAmount = ceil($outAmount);
+
+            $this->rateUsd = $billingCurrency->rateByDirection($rateDirection);
         }
 
         return parent::beforeSave($insert);

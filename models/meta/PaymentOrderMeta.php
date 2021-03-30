@@ -23,7 +23,7 @@ use steroids\payment\models\PaymentOrderItem;
  * @property integer $inAmount
  * @property string $inCurrencyCode
  * @property integer $outCommissionFixed
- * @property integer $outCommissionPercent
+ * @property string $outCommissionPercent
  * @property integer $outAmount
  * @property string $outCurrencyCode
  * @property string $status
@@ -66,8 +66,9 @@ abstract class PaymentOrderMeta extends Model
             ...parent::rules(),
             ['uid', 'string', 'max' => '36'],
             [['description', 'externalId', 'inCurrencyCode', 'outCurrencyCode', 'errorMessage'], 'string', 'max' => 255],
-            [['methodId', 'creatorUserId', 'payerUserId', 'inAmount', 'outCommissionFixed', 'outCommissionPercent', 'outAmount', 'realInAmount', 'realOutAmount'], 'integer'],
+            [['methodId', 'creatorUserId', 'payerUserId', 'inAmount', 'outCommissionFixed', 'outAmount', 'realInAmount', 'realOutAmount'], 'integer'],
             [['providerParamsJson', 'redirectUrl', 'methodParamsJson'], 'string'],
+            ['outCommissionPercent', 'number'],
             ['status', 'in', 'range' => PaymentStatus::getKeys()],
         ];
     }
@@ -169,7 +170,7 @@ abstract class PaymentOrderMeta extends Model
             ],
             'outCommissionPercent' => [
                 'label' => Yii::t('steroids', 'Комиссия в %'),
-                'appType' => 'integer',
+                'appType' => 'double',
                 'isPublishToFrontend' => false
             ],
             'outAmount' => [
