@@ -16,7 +16,7 @@ use steroids\billing\models\BillingAccount;
  * @property string $providerName
  * @property string $direction
  * @property integer $outCommissionFixed
- * @property integer $outCommissionPercent
+ * @property string $outCommissionPercent
  * @property boolean $isEnable
  * @property string $createTime
  * @property string $updateTime
@@ -47,7 +47,8 @@ abstract class PaymentMethodMeta extends Model
             ...parent::rules(),
             [['providerName', 'name', 'outCurrencyCode', 'title'], 'string', 'max' => 255],
             ['direction', 'in', 'range' => PaymentDirection::getKeys()],
-            [['outCommissionFixed', 'outCommissionPercent', 'systemAccountId'], 'integer'],
+            [['outCommissionFixed', 'systemAccountId'], 'integer'],
+            ['outCommissionPercent', 'number'],
             ['isEnable', 'steroids\\core\\validators\\ExtBooleanValidator'],
         ];
     }
@@ -109,7 +110,7 @@ abstract class PaymentMethodMeta extends Model
             ],
             'outCommissionPercent' => [
                 'label' => Yii::t('steroids', 'Комиссия в %'),
-                'appType' => 'integer',
+                'appType' => 'double',
                 'isPublishToFrontend' => false
             ],
             'isEnable' => [
