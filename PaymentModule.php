@@ -20,6 +20,7 @@ use steroids\payment\providers\PayInPayOutProvider;
 use steroids\payment\providers\PayPalProvider;
 use steroids\payment\providers\RobokassaProvider;
 use steroids\payment\providers\TinkoffProvider;
+use steroids\payment\providers\UnitpayProvider;
 use steroids\payment\providers\YandexKassaProvider;
 use yii\helpers\Json;
 use yii\helpers\Url;
@@ -92,6 +93,7 @@ class PaymentModule extends Module
             'teleport' => TeleportProvider::class,
             'payeer' => PayeerProvider::class,
             'qiwi' => QiwiProvider::class,
+            'unitpay' => UnitpayProvider::class,
         ], $this->providersClasses);
     }
 

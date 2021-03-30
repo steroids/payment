@@ -11,6 +11,7 @@ use steroids\payment\models\PaymentMethod;
 use steroids\payment\models\PaymentOrder;
 use steroids\payment\PaymentModule;
 use steroids\payment\providers\BaseProvider;
+use steroids\payment\providers\UnitpayProvider;
 use yii\base\InvalidConfigException;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
@@ -154,7 +155,25 @@ class PaymentController extends Controller
      */
     public function actionCallback(string $methodName)
     {
-        $order = $this->findOrder($this->findProvider($methodName));
+        $provider = $this->findProvider($methodName);
+
+        if ($provider instanceof UnitpayProvider) {
+            // Unitpay при вызове start метода сразу же делает запрос на callback-ссылку с методом 'check' чтобы
+            // проверить что наш сайт одобряет такой платеж. Но так как у нас на момент вызова start еще не
+            // сохранен PaymentOrder с externalId, да и потому что подобной практики в других платежный провайдерах нет,
+            // мы говорит Unitpay на запрос с методом 'check' что всё в порядке - все проверки будут при методе 'pay'
+            if ($provider::isCheckRequest(RequestInfo::createFromYii())) {
+                \Yii::$app->response->format = Response::FORMAT_RAW;
+                return $provider::getResponseForCheckRequest();
+            }
+        }
+
+        return $this->runCallbackInternal($provider, $methodName);
+    }
+
+    private function runCallbackInternal(BaseProvider $provider, string $methodName)
+    {
+        $order = $this->findOrder($provider);
         if (!$order) {
             throw new InvalidConfigException("Cannot resolve order id for method '$methodName'");
         }
@@ -279,11 +298,47 @@ class PaymentController extends Controller
             $request = RequestInfo::createFromYii();
         }
 
-        // Get order id
         unset($request->params['methodName']);
+
+        // Unitpay response doesn't contain our PaymentOrder ID, only external payment ID
+        if ($provider instanceof UnitpayProvider) {
+            return $this->findUnitpayOrder($provider, $request);
+        }
+
+        // Get order id
         $orderId = $provider->resolveOrderId($request);
 
         // Get order and run callback
         return $orderId ? PaymentOrder::findOrPanic(['id' => $orderId]) : null;
+    }
+
+    /**
+     * @param UnitpayProvider $provider
+     * @param RequestInfo $request
+     * @return PaymentOrder|null
+     * @throws \Exception
+     */
+    private function findUnitpayOrder(UnitpayProvider $provider, RequestInfo $request): ?PaymentOrder
+    {
+        $unitpayPaymentMethodsIds = PaymentMethod::find()
+            ->select('id')
+            ->where(['name' => $provider->name])
+            ->column();
+
+        if (empty($unitpayPaymentMethodsIds)) {
+            // or throw exception?...
+            return null;
+        }
+
+        $externalPaymentId = $request->getParam('params.unitpayId');
+
+        if (!$externalPaymentId) {
+            return null;
+        }
+
+        return PaymentOrder::findOne([
+            'externalId' => $externalPaymentId,
+            'methodId' => $unitpayPaymentMethodsIds,
+        ]);
     }
 }

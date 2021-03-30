@@ -220,6 +220,9 @@ class PaymentStartForm extends PaymentStartFormMeta
     }
 
     /**
+     * @todo custom properties setting will fail if some validator is added for custom field
+     * set custom fields manually, e.g. in static::setAttributes()
+     *
      * @inheritDoc
      */
     public function onUnsafeAttribute($name, $value)
