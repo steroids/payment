@@ -4,6 +4,7 @@ namespace steroids\payment\models;
 
 use steroids\auth\AuthModule;
 use steroids\auth\UserInterface;
+use steroids\billing\enums\BillingCurrencyRateDirectionEnum;
 use steroids\billing\models\BillingCurrency;
 use steroids\billing\operations\BaseBillingOperation;
 use steroids\billing\operations\BaseOperation;
@@ -366,9 +367,14 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
     public function setExternalAmount(int $amount)
     {
         $this->realOutAmount = $amount;
+
+        $rateDirection = $this->method->direction === 'withdraw'
+            ? BillingCurrencyRateDirectionEnum::SELL
+            : BillingCurrencyRateDirectionEnum::BUY;
+
         $this->realInAmount = $this->realOutAmount === $this->outAmount
             ? $this->inAmount
-            : BillingCurrency::convert($this->outCurrencyCode, $this->inCurrencyCode, $this->realOutAmount, $this->method->direction);
+            : BillingCurrency::convert($this->outCurrencyCode, $this->inCurrencyCode, $this->realOutAmount, $rateDirection);
     }
 
     public function setErrorMessage(string $value)
@@ -410,7 +416,12 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
     {
         // Calculate out amount with commission
         if ($this->inAmount && !$this->outAmount) {
-            $outAmount = BillingCurrency::convert($this->inCurrencyCode, $this->outCurrencyCode, $this->inAmount, $this->method->direction);
+            $billingCurrency = BillingCurrency::getByCode($this->inCurrencyCode);
+            $rateDirection = $this->method->direction === 'withdraw'
+                ? BillingCurrencyRateDirectionEnum::SELL
+                : BillingCurrencyRateDirectionEnum::BUY;
+
+            $outAmount = $billingCurrency->to($this->outCurrencyCode, $this->inAmount, $rateDirection);
             $outAmount = $outAmount * (1 + ($this->outCommissionPercent / 100));
             $outAmount = $outAmount + $this->outCommissionFixed;
             $this->outAmount = ceil($outAmount);
