@@ -24,6 +24,7 @@ use steroids\billing\models\BillingAccount;
  * @property string $outCurrencyCode
  * @property integer $systemAccountId
  * @property string $title
+ * @property string $outCommissionCurrencyCode
  * @property-read BillingCurrency $outCurrency
  * @property-read PaymentMethodParam[] $params
  * @property-read BillingAccount $systemAccount
@@ -45,7 +46,7 @@ abstract class PaymentMethodMeta extends Model
     {
         return [
             ...parent::rules(),
-            [['providerName', 'name', 'outCurrencyCode', 'title'], 'string', 'max' => 255],
+            [['providerName', 'name', 'outCurrencyCode', 'title', 'outCommissionCurrencyCode'], 'string', 'max' => 255],
             ['direction', 'in', 'range' => PaymentDirection::getKeys()],
             [['outCommissionFixed', 'systemAccountId'], 'integer'],
             ['outCommissionPercent', 'number'],
@@ -145,6 +146,10 @@ abstract class PaymentMethodMeta extends Model
             ],
             'title' => [
                 'label' => Yii::t('steroids', 'Название'),
+                'isPublishToFrontend' => false
+            ],
+            'outCommissionCurrencyCode' => [
+                'label' => Yii::t('steroids', 'Валюта outCommissionFixed '),
                 'isPublishToFrontend' => false
             ]
         ]);
