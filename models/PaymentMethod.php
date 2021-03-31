@@ -76,6 +76,7 @@ class PaymentMethod extends PaymentMethodMeta
             'outCurrencyCode' => $this->outCurrencyCode,
             'outCommissionFixed' => $this->outCommissionFixed,
             'outCommissionPercent' => $this->outCommissionPercent,
+            'outCommissionCurrencyCode' => $this->outCommissionCurrencyCode,
         ]);
         $order->saveOrPanic();
 
