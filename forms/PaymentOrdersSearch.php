@@ -3,8 +3,11 @@
 namespace steroids\payment\forms;
 
 use app\auth\AuthModule;
+use app\billing\enums\CurrencyEnum;
 use steroids\auth\UserInterface;
+use steroids\billing\enums\BillingCurrencyRateDirectionEnum;
 use steroids\core\base\Model;
+use steroids\payment\enums\PaymentDirection;
 use steroids\payment\forms\meta\PaymentOrdersSearchMeta;
 use steroids\payment\models\PaymentOrder;
 use yii\db\ActiveQuery;
@@ -25,10 +28,27 @@ class PaymentOrdersSearch extends PaymentOrdersSearchMeta
             'description',
             'payerUser',
             'externalId',
-            'inAmount' => fn (PaymentOrder $order) => $order->inCurrency->amountToFloat($order->inAmount),
+            'inAmount' => fn(PaymentOrder $order) => $order->inCurrency->amountToFloat($order->inAmount),
             'inCurrencyCode',
-            'outAmount' => fn (PaymentOrder $order) => $order->outCurrency->amountToFloat($order->outAmount),
+            'outAmount' => fn(PaymentOrder $order) => $order->outCurrency->amountToFloat($order->outAmount),
             'outCurrencyCode',
+            'outAmountRub' => function (PaymentOrder $order) {
+                return $order->outCurrency->amountToFloat(
+                    $order->outCurrency->to(CurrencyEnum::RUB, $order->outAmount)
+                );
+            },
+            'commissionAmountRub' => function (PaymentOrder $order) {
+                $direction = $order->method->direction === PaymentDirection::WITHDRAW
+                    ? BillingCurrencyRateDirectionEnum::SELL
+                    : BillingCurrencyRateDirectionEnum::BUY;
+
+                return $order->outCurrency->amountToFloat($order->outAmount - $order->inCurrency->to(
+                        $order->outCurrencyCode,
+                        $order->inAmount,
+                        $direction
+                    )
+                );
+            },
             'status',
             'createTime',
             'updateTime',
@@ -37,7 +57,7 @@ class PaymentOrdersSearch extends PaymentOrdersSearchMeta
                 'id',
                 'title',
             ],
-            'methodParams' => fn (PaymentOrder $order) => $order->methodParamsJson ? Json::decode($order->methodParamsJson) : null,
+            'methodParams' => fn(PaymentOrder $order) => $order->methodParamsJson ? Json::decode($order->methodParamsJson) : null,
         ];
     }
 
