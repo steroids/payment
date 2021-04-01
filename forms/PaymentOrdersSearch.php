@@ -28,9 +28,9 @@ class PaymentOrdersSearch extends PaymentOrdersSearchMeta
             'description',
             'payerUser',
             'externalId',
-            'inAmount' => fn(PaymentOrder $order) => $order->inCurrency->amountToFloat($order->inAmount),
+            'inAmount' => fn (PaymentOrder $order) => $order->inCurrency->amountToFloat($order->inAmount),
             'inCurrencyCode',
-            'outAmount' => fn(PaymentOrder $order) => $order->outCurrency->amountToFloat($order->outAmount),
+            'outAmount' => fn (PaymentOrder $order) => $order->outCurrency->amountToFloat($order->outAmount),
             'outCurrencyCode',
             'outAmountRub' => function (PaymentOrder $order) {
                 return $order->outCurrency->amountToFloat(
@@ -42,11 +42,14 @@ class PaymentOrdersSearch extends PaymentOrdersSearchMeta
                     ? BillingCurrencyRateDirectionEnum::SELL
                     : BillingCurrencyRateDirectionEnum::BUY;
 
-                return $order->outCurrency->amountToFloat($order->outAmount - $order->inCurrency->to(
+                $commissionAmount = $order->outAmount - $order->inCurrency->to(
                         $order->outCurrencyCode,
                         $order->inAmount,
                         $direction
-                    )
+                    );
+
+                return $order->outCurrency->amountToFloat(
+                    $order->outCurrency->to(CurrencyEnum::RUB, $commissionAmount)
                 );
             },
             'status',
@@ -57,7 +60,7 @@ class PaymentOrdersSearch extends PaymentOrdersSearchMeta
                 'id',
                 'title',
             ],
-            'methodParams' => fn(PaymentOrder $order) => $order->methodParamsJson ? Json::decode($order->methodParamsJson) : null,
+            'methodParams' => fn (PaymentOrder $order) => $order->methodParamsJson ? Json::decode($order->methodParamsJson) : null,
         ];
     }
 

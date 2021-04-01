@@ -414,31 +414,36 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
      */
     public function beforeSave($insert)
     {
-        // Calculate out amount with commission
-        if ($this->inAmount && !$this->outAmount) {
-            $billingCurrency = BillingCurrency::getByCode($this->inCurrencyCode);
-            $rateDirection = $this->method->direction === 'withdraw'
-                ? BillingCurrencyRateDirectionEnum::SELL
-                : BillingCurrencyRateDirectionEnum::BUY;
+        $this->calculateOutAmount();
+        return parent::beforeSave($insert);
+    }
 
-            $outAmount = $billingCurrency->to($this->outCurrencyCode, $this->inAmount, $rateDirection);
-            $outAmount = $outAmount * (1 + ($this->outCommissionPercent / 100));
-
-            if($this->outCommissionCurrencyCode){
-                $amountCommissionFixed = $billingCurrency::convert(
-                    $this->outCommissionCurrencyCode,
-                    $this->outCurrencyCode,
-                    $this->outCommissionFixed,
-                    $rateDirection
-                );
-
-                $outAmount = $outAmount + $amountCommissionFixed;
-            }
-            $this->outAmount = ceil($outAmount);
-
-            $this->rateUsd = $billingCurrency->rateByDirection($rateDirection);
+    public function calculateOutAmount()
+    {
+        if (!$this->inAmount) {
+            return;
         }
 
-        return parent::beforeSave($insert);
+        $billingCurrency = BillingCurrency::getByCode($this->inCurrencyCode);
+        $rateDirection = $this->method->direction === 'withdraw'
+            ? BillingCurrencyRateDirectionEnum::SELL
+            : BillingCurrencyRateDirectionEnum::BUY;
+
+        $outAmount = $billingCurrency->to($this->method->outCurrencyCode, $this->inAmount, $rateDirection);
+
+        $outAmount = $outAmount * (1 + ($this->outCommissionPercent / 100));
+
+        if ($this->method->outCommissionCurrencyCode) {
+            $amountCommissionFixed = $billingCurrency::convert(
+                $this->method->outCommissionCurrencyCode,
+                $this->method->outCurrencyCode,
+                $this->method->outCommissionFixed,
+                $rateDirection
+            );
+            $outAmount = $outAmount + $amountCommissionFixed;
+        }
+        $this->outAmount = ceil($outAmount);
+
+        $this->rateUsd = $billingCurrency->rateByDirection($rateDirection);
     }
 }
