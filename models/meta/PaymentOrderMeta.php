@@ -173,7 +173,8 @@ abstract class PaymentOrderMeta extends Model
             'outCommissionPercent' => [
                 'label' => Yii::t('steroids', 'Комиссия в %'),
                 'appType' => 'double',
-                'isPublishToFrontend' => false
+                'isPublishToFrontend' => false,
+                'scale' => '2'
             ],
             'outAmount' => [
                 'label' => Yii::t('steroids', 'Сумма в валюте платежного шлюза'),
