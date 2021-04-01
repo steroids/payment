@@ -22,7 +22,8 @@ class PaymentAdminController extends CrudApiController
         return [
             'admin.payment' => static::apiMapCrud('/api/v1/admin/payment', [
                 'items' => [
-                    'withdraw-methods' => "GET $baseUrl/withdraw-methods",
+                    //@todo change to get after dataProvider in frontend can send get request
+                    'withdraw-methods' => "POST $baseUrl/withdraw-methods",
                     'get-orders' => "GET $baseUrl/orders",
                     'order-accept' => "POST $baseUrl/orders/<orderId>/accept",
                     'order-reject' => "POST $baseUrl/orders/<orderId>/reject",
@@ -36,7 +37,7 @@ class PaymentAdminController extends CrudApiController
         return array_map(function ($method) {
             return $method->toFrontend([
                 'id',
-                'label' => fn(PaymentMethod $method) => $method->providerName
+                'label' => fn(PaymentMethod $method) => $method->title
             ]);
         }, PaymentMethod::findAll(['direction' => PaymentDirection::WITHDRAW]));
     }
