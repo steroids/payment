@@ -33,8 +33,12 @@ class PaymentOrdersSearch extends PaymentOrdersSearchMeta
             'outAmount' => fn(PaymentOrder $order) => $order->outCurrency->amountToFloat($order->outAmount),
             'outCurrencyCode',
             'outAmountRub' => function (PaymentOrder $order) {
+                $direction = $order->method->direction === PaymentDirection::WITHDRAW
+                    ? BillingCurrencyRateDirectionEnum::SELL
+                    : BillingCurrencyRateDirectionEnum::BUY;
+
                 return $order->outCurrency->amountToFloat(
-                    $order->outCurrency->to(CurrencyEnum::RUB, $order->outAmount)
+                    $order->outCurrency->to(CurrencyEnum::RUB, $order->outAmount, $direction)
                 );
             },
             'commissionAmountRub' => function (PaymentOrder $order) {
@@ -49,7 +53,7 @@ class PaymentOrdersSearch extends PaymentOrdersSearchMeta
                     ));
 
                 return $order->outCurrency->amountToFloat(
-                    $order->outCurrency->to(CurrencyEnum::RUB, $commissionAmount)
+                    $order->outCurrency->to(CurrencyEnum::RUB, $commissionAmount, $direction)
                 );
             },
             'status',
