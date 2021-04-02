@@ -425,13 +425,14 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         }
 
         $billingCurrency = BillingCurrency::getByCode($this->inCurrencyCode);
-        $rateDirection = $this->method->direction === 'withdraw'
+        $rateDirection = $this->method->direction === PaymentDirection::WITHDRAW
             ? BillingCurrencyRateDirectionEnum::SELL
             : BillingCurrencyRateDirectionEnum::BUY;
 
         $outAmount = $billingCurrency->to($this->method->outCurrencyCode, $this->inAmount, $rateDirection);
-
-        $outAmount = $outAmount * (1 + ($this->outCommissionPercent / 100));
+        $outAmount = $this->method->direction === PaymentDirection::WITHDRAW
+            ? $outAmount - ($outAmount * ($this->outCommissionPercent / 100))
+            : $outAmount + ($outAmount * ($this->outCommissionPercent / 100));
 
         if ($this->method->outCommissionCurrencyCode) {
             $amountCommissionFixed = $billingCurrency::convert(
@@ -440,10 +441,13 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
                 $this->method->outCommissionFixed,
                 $rateDirection
             );
-            $outAmount = $outAmount + $amountCommissionFixed;
-        }
-        $this->outAmount = ceil($outAmount);
 
+            $outAmount = $this->method->direction === PaymentDirection::WITHDRAW
+                ? $outAmount - $amountCommissionFixed
+                : $outAmount + $amountCommissionFixed;
+        }
+
+        $this->outAmount = ceil($outAmount);
         $this->rateUsd = $billingCurrency->rateByDirection($rateDirection);
     }
 }
