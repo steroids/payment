@@ -31,6 +31,7 @@ use yii\web\IdentityInterface;
  * Class PaymentOrder
  * @package steroids\payment\models
  * @property-read array $providerParams
+ * @property-read string $direction
  * @property-read array $methodParams
  * @property-read PaymentProviderLog $lastProviderLogger
  * @property-read IdentityInterface|UserInterface|Model $payerUser
@@ -74,6 +75,16 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
     public function addFailureOperation(BaseOperation $operation)
     {
         return $this->addOperation($operation, PaymentStatus::FAILURE);
+    }
+
+    /**
+     * @return string
+     */
+    public function getDirection()
+    {
+        return $this->method->direction === PaymentDirection::WITHDRAW
+            ? BillingCurrencyRateDirectionEnum::SELL
+            : BillingCurrencyRateDirectionEnum::BUY;
     }
 
     public function addOperation(BaseOperation $operation, $conditionStatus = PaymentStatus::SUCCESS)
