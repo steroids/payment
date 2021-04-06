@@ -4,7 +4,6 @@ namespace steroids\payment\models;
 
 use steroids\auth\AuthModule;
 use steroids\auth\UserInterface;
-use steroids\billing\enums\BillingCurrencyRateDirectionEnum;
 use steroids\billing\models\BillingCurrency;
 use steroids\billing\operations\BaseBillingOperation;
 use steroids\billing\operations\BaseOperation;
@@ -82,9 +81,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
      */
     public function getDirection()
     {
-        return $this->method->direction === PaymentDirection::WITHDRAW
-            ? BillingCurrencyRateDirectionEnum::SELL
-            : BillingCurrencyRateDirectionEnum::BUY;
+        return PaymentModule::getInstance()::getCurrencyRateDirectionForPaymentDirection($this->method->direction);
     }
 
     public function addOperation(BaseOperation $operation, $conditionStatus = PaymentStatus::SUCCESS)
@@ -379,9 +376,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
     {
         $this->realOutAmount = $amount;
 
-        $rateDirection = $this->method->direction === 'withdraw'
-            ? BillingCurrencyRateDirectionEnum::SELL
-            : BillingCurrencyRateDirectionEnum::BUY;
+        $rateDirection = PaymentModule::getInstance()::getCurrencyRateDirectionForPaymentDirection($this->method->direction);
 
         $this->realInAmount = $this->realOutAmount === $this->outAmount
             ? $this->inAmount
@@ -436,9 +431,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         }
 
         $billingCurrency = BillingCurrency::getByCode($this->inCurrencyCode);
-        $rateDirection = $this->method->direction === PaymentDirection::WITHDRAW
-            ? BillingCurrencyRateDirectionEnum::SELL
-            : BillingCurrencyRateDirectionEnum::BUY;
+        $rateDirection = PaymentModule::getInstance()::getCurrencyRateDirectionForPaymentDirection($this->method->direction);
 
         $outAmount = $billingCurrency->to($this->method->outCurrencyCode, $this->inAmount, $rateDirection);
         $outAmount = $this->method->direction === PaymentDirection::WITHDRAW
