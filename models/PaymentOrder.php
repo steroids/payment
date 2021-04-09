@@ -452,6 +452,6 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         }
 
         $this->outAmount = ceil($outAmount);
-        $this->rateUsd = $billingCurrency->rateByDirection($rateDirection);
+        $this->rateUsd = (BillingCurrency::getByCode($this->outCurrencyCode))->rateByDirection($rateDirection);
     }
 }
