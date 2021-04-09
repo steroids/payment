@@ -25,6 +25,10 @@ class PaymentWithdrawReserveOperation extends BaseBillingOperation
      */
     public function getTitle()
     {
+        if ($this->document->description) {
+            return $this->document->description;
+        }
+
         return \Yii::t('app', 'Вывод средств');
     }
 
