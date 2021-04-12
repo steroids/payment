@@ -2,11 +2,12 @@
 
 namespace steroids\payment\models;
 
-use steroids\billing\models\BillingAccount;
 use steroids\billing\models\BillingCurrency;
+use steroids\core\exceptions\ModelSaveException;
 use steroids\payment\exceptions\PaymentException;
 use steroids\payment\models\meta\PaymentMethodMeta;
 use steroids\payment\PaymentModule;
+use Yii;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Json;
 
@@ -54,17 +55,39 @@ class PaymentMethod extends PaymentMethodMeta
     }
 
     /**
-     * @param BillingAccount $toAccount
+     * Create payment order and save it
+     *
+     * @param int $payerUserId
+     * @param string $inCurrencyCode
+     * @param int $inAmount
+     * @param array $params
+     * @return PaymentOrder
+     * @throws ModelSaveException
+     */
+    public function createOrder(int $payerUserId, string $inCurrencyCode, int $inAmount, array $params = []): PaymentOrder
+    {
+        $order = $this->createOrderNoSave($payerUserId, $inCurrencyCode, $inAmount, $params);
+        $order->saveOrPanic();
+
+        $order->populateRelation('method', $this);
+        return $order;
+    }
+
+    /**
+     * Create payment order without saving it
+     *
+     * @param int $payerUserId
+     * @param string $inCurrencyCode
      * @param int $inAmount
      * @param array $params
      * @return PaymentOrder
      */
-    public function createOrder(int $payerUserId, string $inCurrencyCode, int $inAmount, array $params = [])
+    public function createOrderNoSave(int $payerUserId, string $inCurrencyCode, int $inAmount, array $params = []): PaymentOrder
     {
         $description = ArrayHelper::remove($params, 'description');
         $redirectUrl = ArrayHelper::remove($params, 'redirectUrl');
 
-        $order = new PaymentOrder([
+        return new PaymentOrder([
             'methodId' => $this->primaryKey,
             'methodParamsJson' => !empty($params) ? Json::encode($params) : null,
             'payerUserId' => $payerUserId,
@@ -72,15 +95,11 @@ class PaymentMethod extends PaymentMethodMeta
             'inCurrencyCode' => $inCurrencyCode,
             'description' => $description,
             'redirectUrl' => $redirectUrl,
-            'creatorUserId' => !STEROIDS_IS_CLI && \Yii::$app->has('user') ? \Yii::$app->user->id : null,
+            'creatorUserId' => !STEROIDS_IS_CLI && Yii::$app->has('user') ? Yii::$app->user->id : null,
             'outCurrencyCode' => $this->outCurrencyCode,
             'outCommissionFixed' => $this->outCommissionFixed,
             'outCommissionPercent' => $this->outCommissionPercent,
             'outCommissionCurrencyCode' => $this->outCommissionCurrencyCode,
         ]);
-        $order->saveOrPanic();
-
-        $order->populateRelation('method', $this);
-        return $order;
     }
 }
