@@ -4,7 +4,6 @@ namespace steroids\payment\models;
 
 use steroids\auth\AuthModule;
 use steroids\auth\UserInterface;
-use steroids\billing\enums\BillingCurrencyRateDirectionEnum;
 use steroids\billing\models\BillingCurrency;
 use steroids\billing\operations\BaseBillingOperation;
 use steroids\billing\operations\BaseOperation;
@@ -31,6 +30,7 @@ use yii\web\IdentityInterface;
  * Class PaymentOrder
  * @package steroids\payment\models
  * @property-read array $providerParams
+ * @property-read string $direction
  * @property-read array $methodParams
  * @property-read PaymentProviderLog $lastProviderLogger
  * @property-read IdentityInterface|UserInterface|Model $payerUser
@@ -78,6 +78,14 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
     public function addFailureOperation(BaseOperation $operation)
     {
         return $this->addOperation($operation, PaymentStatus::FAILURE);
+    }
+
+    /**
+     * @return string
+     */
+    public function getDirection()
+    {
+        return PaymentModule::getInstance()::getCurrencyRateDirectionForPaymentDirection($this->method->direction);
     }
 
     public function addOperation(BaseOperation $operation, $conditionStatus = PaymentStatus::SUCCESS)
@@ -393,9 +401,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
     {
         $this->realOutAmount = $amount;
 
-        $rateDirection = $this->method->direction === self::PROVIDER_CALL_WITHDRAW
-            ? BillingCurrencyRateDirectionEnum::SELL
-            : BillingCurrencyRateDirectionEnum::BUY;
+        $rateDirection = PaymentModule::getInstance()::getCurrencyRateDirectionForPaymentDirection($this->method->direction);
 
         $this->realInAmount = $this->realOutAmount === $this->outAmount
             ? $this->inAmount
@@ -450,13 +456,12 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         }
 
         $billingCurrency = BillingCurrency::getByCode($this->inCurrencyCode);
-        $rateDirection = $this->method->direction === self::PROVIDER_CALL_WITHDRAW
-            ? BillingCurrencyRateDirectionEnum::SELL
-            : BillingCurrencyRateDirectionEnum::BUY;
+        $rateDirection = PaymentModule::getInstance()::getCurrencyRateDirectionForPaymentDirection($this->method->direction);
 
         $outAmount = $billingCurrency->to($this->method->outCurrencyCode, $this->inAmount, $rateDirection);
-
-        $outAmount = $outAmount * (1 + ($this->outCommissionPercent / 100));
+        $outAmount = $this->method->direction === PaymentDirection::WITHDRAW
+            ? $outAmount - ($outAmount * ($this->outCommissionPercent / 100))
+            : $outAmount + ($outAmount * ($this->outCommissionPercent / 100));
 
         if ($this->method->outCommissionCurrencyCode) {
             $amountCommissionFixed = $billingCurrency::convert(
@@ -465,10 +470,13 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
                 $this->method->outCommissionFixed,
                 $rateDirection
             );
-            $outAmount = $outAmount + $amountCommissionFixed;
-        }
-        $this->outAmount = ceil($outAmount);
 
-        $this->rateUsd = $billingCurrency->rateByDirection($rateDirection);
+            $outAmount = $this->method->direction === PaymentDirection::WITHDRAW
+                ? $outAmount - $amountCommissionFixed
+                : $outAmount + $amountCommissionFixed;
+        }
+
+        $this->outAmount = ceil($outAmount);
+        $this->rateUsd = (BillingCurrency::getByCode($this->outCurrencyCode))->rateByDirection($rateDirection);
     }
 }

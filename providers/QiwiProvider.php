@@ -56,8 +56,13 @@ class QiwiProvider extends BaseProvider
     {
         $params = [
             'amount' => [
-                // Сумма операции (округленная до двух десятичных знаков в меньшую сторону).
-                'value' => round($order->getOutAmount() / 100, 2),
+                // Сумма операции, округленная до двух десятичных знаков в меньшую сторону, ровно с 2 знаками после запятой
+                'value' => number_format(
+                    round($order->getOutAmount() / 100, 2),
+                    2,
+                    '.',
+                    '',
+                ),
 
                 // Валюта в буквенном формате согласно ISO 4217.
                 'currency' => $this->currency,

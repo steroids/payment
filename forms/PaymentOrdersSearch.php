@@ -28,28 +28,24 @@ class PaymentOrdersSearch extends PaymentOrdersSearchMeta
             'description',
             'payerUser',
             'externalId',
-            'inAmount' => fn (PaymentOrder $order) => $order->inCurrency->amountToFloat($order->inAmount),
+            'inAmount' => fn(PaymentOrder $order) => $order->inCurrency->amountToFloat($order->inAmount),
             'inCurrencyCode',
-            'outAmount' => fn (PaymentOrder $order) => $order->outCurrency->amountToFloat($order->outAmount),
+            'outAmount' => fn(PaymentOrder $order) => $order->outCurrency->amountToFloat($order->outAmount),
             'outCurrencyCode',
             'outAmountRub' => function (PaymentOrder $order) {
                 return $order->outCurrency->amountToFloat(
-                    $order->outCurrency->to(CurrencyEnum::RUB, $order->outAmount)
+                    $order->outCurrency->to(CurrencyEnum::RUB, $order->outAmount, $order->direction)
                 );
             },
             'commissionAmountRub' => function (PaymentOrder $order) {
-                $direction = $order->method->direction === PaymentDirection::WITHDRAW
-                    ? BillingCurrencyRateDirectionEnum::SELL
-                    : BillingCurrencyRateDirectionEnum::BUY;
-
-                $commissionAmount = $order->outAmount - $order->inCurrency->to(
+                $commissionAmount = abs($order->outAmount - $order->inCurrency->to(
                         $order->outCurrencyCode,
                         $order->inAmount,
-                        $direction
-                    );
+                        $order->direction
+                    ));
 
                 return $order->outCurrency->amountToFloat(
-                    $order->outCurrency->to(CurrencyEnum::RUB, $commissionAmount)
+                    $order->outCurrency->to(CurrencyEnum::RUB, $commissionAmount, $order->direction)
                 );
             },
             'status',
@@ -60,7 +56,7 @@ class PaymentOrdersSearch extends PaymentOrdersSearchMeta
                 'id',
                 'title',
             ],
-            'methodParams' => fn (PaymentOrder $order) => $order->methodParamsJson ? Json::decode($order->methodParamsJson) : null,
+            'methodParams' => fn(PaymentOrder $order) => $order->methodParamsJson ? Json::decode($order->methodParamsJson) : null,
         ];
     }
 

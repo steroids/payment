@@ -2,8 +2,10 @@
 
 namespace steroids\payment;
 
+use steroids\billing\enums\BillingCurrencyRateDirectionEnum;
 use steroids\core\base\Module;
 use steroids\core\traits\ModuleProvidersTrait;
+use steroids\payment\enums\PaymentDirection;
 use steroids\payment\models\PaymentMethod;
 use steroids\payment\models\PaymentMethodParam;
 use steroids\payment\models\PaymentOrder;
@@ -22,7 +24,6 @@ use steroids\payment\providers\RobokassaProvider;
 use steroids\payment\providers\TinkoffProvider;
 use steroids\payment\providers\UnitpayProvider;
 use steroids\payment\providers\YandexKassaProvider;
-use yii\helpers\Json;
 use yii\helpers\Url;
 
 /**
@@ -115,5 +116,24 @@ class PaymentModule extends Module
     public function getFailureUrl($methodName, $params = [])
     {
         return Url::to(array_merge(['/payment/payment/failure', 'methodName' => $methodName], $params), true);
+    }
+
+    /**
+     * @param string $paymentDirection
+     * @see PaymentDirection
+
+     * @return string|null
+     * @see BillingCurrencyRateDirectionEnum
+     */
+    public static function getCurrencyRateDirectionForPaymentDirection(string $paymentDirection): ?string
+    {
+        switch ($paymentDirection) {
+            case PaymentDirection::WITHDRAW:
+                return BillingCurrencyRateDirectionEnum::SELL;
+            case PaymentDirection::CHARGE:
+                return BillingCurrencyRateDirectionEnum::BUY;
+            default:
+                return null;
+        }
     }
 }
