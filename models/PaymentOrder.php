@@ -37,6 +37,10 @@ use yii\web\IdentityInterface;
  */
 class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
 {
+    const PROVIDER_CALL_START = 'start';
+    const PROVIDER_CALL_CALLBACK = 'call';
+    const PROVIDER_CALL_WITHDRAW = 'withdraw';
+
     private ?array $_providerParams = null;
 
     /**
@@ -113,13 +117,17 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
      * @throws InvalidConfigException
      * @throws PaymentException
      */
-    public function start(RequestInfo $request, $callMethod = 'start')
+    public function start(RequestInfo $request, $callMethod = self::PROVIDER_CALL_START)
     {
         if ($this->isWithdraw()) {
-            $process = new PaymentProcess([
-                'newStatus' => PaymentStatus::PROCESS,
-                'responseText' => 'ok',
-            ]);
+            if (PaymentModule::getInstance()->isManualWithdraw) {
+                $process = new PaymentProcess([
+                    'newStatus' => PaymentStatus::PROCESS,
+                    'responseText' => 'ok',
+                ]);
+            } else {
+                return $this->callProvider(self::PROVIDER_CALL_WITHDRAW, $request);
+            }
         } else {
             $process = $this->callProvider($callMethod, $request);
         }
@@ -139,6 +147,20 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
     public function callback(RequestInfo $request)
     {
         return $this->callProvider('callback', $request);
+    }
+
+    /**
+     * @param RequestInfo $request
+     * @param PaymentProcess $process
+     * @throws InvalidConfigException
+     */
+    public function end(RequestInfo $request, PaymentProcess $process)
+    {
+        if ($this->isWithdraw() && PaymentModule::getInstance()->isManualWithdraw && $process->newStatus === PaymentStatus::SUCCESS) {
+            $this->callProvider(self::PROVIDER_CALL_WITHDRAW, $request);
+        } else {
+            $this->endInternal($request, $process);
+        }
     }
 
     protected function callProvider(string $callMethod, RequestInfo $request)
@@ -166,16 +188,16 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
 
         if (
             !(PaymentModule::getInstance())->isManualWithdraw
-            && $callMethod === PaymentDirection::WITHDRAW
+            && $callMethod === self::PROVIDER_CALL_WITHDRAW
             && !($provider instanceof ProviderWithdrawInterface)
         ) {
             throw new InvalidConfigException("Provider '{$this->method->providerName}' does not support withdrawal operations");
         }
 
         $eventsMap = [
-            'start' => PaymentModule::EVENT_START,
-            'callback' => PaymentModule::EVENT_CALLBACK,
-            'withdraw' => PaymentModule::EVENT_WITHDRAW,
+            self::PROVIDER_CALL_START => PaymentModule::EVENT_START,
+            self::PROVIDER_CALL_CALLBACK => PaymentModule::EVENT_CALLBACK,
+            self::PROVIDER_CALL_WITHDRAW => PaymentModule::EVENT_WITHDRAW,
         ];
 
         // Run start
@@ -200,6 +222,8 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         } catch (\Exception $e) {
             // Store exception in log model
             $providerLog->errorRaw = (string)$e;
+            $providerLog->endTime = date('Y-m-d H:i:s');
+            $providerLog->saveOrPanic();
 
             $transaction->rollBack();
             throw $e;
@@ -209,7 +233,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         if (!in_array($this->status, PaymentStatus::getFinishStatuses())
             && in_array($process->newStatus, PaymentStatus::getFinishStatuses())
         ) {
-            $this->end($request, $process);
+            $this->endInternal($request, $process);
         }
 
         // End log
@@ -219,7 +243,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         return $process;
     }
 
-    public function end(RequestInfo $request, PaymentProcess $process)
+    public function endInternal(RequestInfo $request, PaymentProcess $process)
     {
         // Check is finished
         if (in_array($this->status, PaymentStatus::getFinishStatuses()) || $this->status === $process->newStatus) {
@@ -228,15 +252,6 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
 
         $transaction = \Yii::$app->db->beginTransaction();
         try {
-            //Confirm withdraw operation
-            if (
-                !(PaymentModule::getInstance())->isManualWithdraw
-                && $this->isWithdraw()
-                && $process->newStatus === PaymentStatus::SUCCESS
-            ) {
-                $process = $this->callProvider(PaymentMethodEnum::WITHDRAW, $request);
-            }
-
             // Save new status
             $this->status = $process->newStatus;
             $this->saveOrPanic();
@@ -301,6 +316,16 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
     public function getPayerUserId()
     {
         return $this->payerUserId;
+    }
+
+    public function getInCurrencyCode()
+    {
+        return $this->inCurrencyCode;
+    }
+
+    public function getOutCurrencyCode()
+    {
+        return $this->outCurrencyCode;
     }
 
     public function getOutAmount()
@@ -368,7 +393,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
     {
         $this->realOutAmount = $amount;
 
-        $rateDirection = $this->method->direction === 'withdraw'
+        $rateDirection = $this->method->direction === self::PROVIDER_CALL_WITHDRAW
             ? BillingCurrencyRateDirectionEnum::SELL
             : BillingCurrencyRateDirectionEnum::BUY;
 
@@ -425,7 +450,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         }
 
         $billingCurrency = BillingCurrency::getByCode($this->inCurrencyCode);
-        $rateDirection = $this->method->direction === 'withdraw'
+        $rateDirection = $this->method->direction === self::PROVIDER_CALL_WITHDRAW
             ? BillingCurrencyRateDirectionEnum::SELL
             : BillingCurrencyRateDirectionEnum::BUY;
 

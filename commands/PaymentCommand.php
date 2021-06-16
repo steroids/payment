@@ -10,6 +10,7 @@ use steroids\payment\structure\PaymentProcess;
 use yii\console\Controller;
 use yii\console\Exception;
 use yii\console\widgets\Table;
+use yii\helpers\StringHelper;
 use yii\helpers\Url;
 
 class PaymentCommand extends Controller
@@ -20,7 +21,7 @@ class PaymentCommand extends Controller
      */
     public function actionOrders($id = null, $action = null)
     {
-        if (!$id && !$action) {
+        if (!$action) {
             $attributes = [
                 'id',
                 'description',
@@ -39,6 +40,7 @@ class PaymentCommand extends Controller
                         ->select($attributes)
                         ->orderBy(['id' => SORT_DESC])
                         ->limit(20)
+                        ->andFilterWhere(['id' => StringHelper::explode($id)])
                         ->asArray()
                         ->all()
                 ),
@@ -48,15 +50,23 @@ class PaymentCommand extends Controller
             echo "\t- php yii payment/orders 999 callback\n";
             echo "\t- php yii payment/orders 999 success\n";
             echo "\t- php yii payment/orders 999 failure\n";
+            echo "\t- php yii payment/orders 999 redo\n";
         } else {
             $order = PaymentOrder::findOrPanic(['id' => $id]);
             $request = new RequestInfo([
-                'url' => '',
+                'url' => 'http://test',
                 'params' => [
                     'orderId' => $order->getId(),
                 ]
             ]);
             switch ($action) {
+                case 'redo':
+                    $action = $order->status;
+                    $order->status = PaymentStatus::PROCESS;
+                    $order->saveOrPanic();
+                    $this->actionOrders($id, $action);
+                    break;
+
                 case 'success':
                     $process = new PaymentProcess();
                     $process->newStatus = PaymentStatus::SUCCESS;

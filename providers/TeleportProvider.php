@@ -12,6 +12,7 @@ use steroids\payment\interfaces\ProviderWithdrawInterface;
 use steroids\payment\models\PaymentOrderInterface;
 use steroids\payment\structure\PaymentProcess;
 use yii\helpers\ArrayHelper;
+use yii\helpers\Json;
 use yii\helpers\Url;
 
 /**
@@ -47,7 +48,17 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
     /**
      * @var string
      */
+    public string $withdrawApiBaseUrl = 'https://api.tport.nl/rest/';
+
+    /**
+     * @var string
+     */
     public string $withdrawWallet;
+
+    /**
+     * @var string
+     */
+    public string $withdrawSystemName = 'card ru';
 
     /**
      * @var string
@@ -58,6 +69,16 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
      * @var string
      */
     public string $withdrawSecretKey;
+
+    /**
+     * @var integer
+     */
+    public int $withdrawApiVersion = 1;
+
+    /**
+     * @var integer
+     */
+    public int $withdrawApiTimeout = 20;
 
     /**
      * @inheritDoc
@@ -86,33 +107,31 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
      */
     public function withdraw(PaymentOrderInterface $order): PaymentProcess
     {
-        $currency = BillingCurrency::getByCode(CurrencyEnum::USD);
+        // Uncomment for use cache:
+        $paymentSystems = json_decode('{"success":1,"data":[{"id":"1","name":"Bitcoin"},{"id":"2","name":"PerfectMoney"},{"id":"3","name":"Dash"},{"id":"4","name":"Advcash"},{"id":"5","name":"Ethereum"},{"id":"6","name":"TetherUsd"},{"id":"7","name":"Litecoin"},{"id":"10","name":"BitcoinCash"},{"id":"11","name":"Payeer"},{"id":"12","name":"Teleport"},{"id":"13","name":"card ru"},{"id":"14","name":"card kz"},{"id":"15","name":"card ua"},{"id":"16","name":"P2pCard"}]}', true);
+        //$paymentSystems = $this->tportQuery('payment-systems', null, 'GET', true);
 
-        $jsonWithdrawData = json_encode([
+        $paymentSystemsMap = ArrayHelper::map($paymentSystems['data'], 'name', 'id');
+        $systemId = ArrayHelper::getValue($paymentSystemsMap, $this->withdrawSystemName);
+        if (!$systemId) {
+            $order->log('Not found system id for name "' . $this->withdrawSystemName . '". Available: ' . Json::encode($paymentSystems));
+            return new PaymentProcess();
+        }
+
+        $outCurrency = BillingCurrency::getByCode($order->getOutCurrencyCode());
+        $data = [
             'wallet' => $this->withdrawWallet,
             'card' => $order->methodParams['cardNumber'],
-            'amount' => $currency->amountToFloat($order->inAmount),
-            'timestamp' => time() * 1000,
-        ]);
+            'amount' => $outCurrency->amountToFloat($order->getOutAmount()),
+            'system' => $systemId,
+        ];
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, 'https://api.tport.nl/rest/v1/transfer-card');
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonWithdrawData);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            'X-TPORT-APIKEY: ' . $this->withdrawApiKey,
-            'Signature: ' . hash_hmac('sha256', $jsonWithdrawData, $this->withdrawSecretKey),
-            'Content-Type: application/json',
-        ));
-
-        $result = curl_exec($ch);
-        $order->log($result);
-        curl_close($ch);
-
-        $resultData = json_decode($result);
+        $order->log('POST transfer-card ' . Json::encode($data));
+        $result = $this->tportQuery('transfer-card', $data, 'POST', true);
+        $order->log('Response: ' . Json::encode($result));
 
         return new PaymentProcess([
-            'newStatus' => (bool)ArrayHelper::getValue($resultData, 'success') ? PaymentStatus::SUCCESS : PaymentStatus::PROCESS,
+            'newStatus' => ArrayHelper::getValue($result, 'success') ? PaymentStatus::SUCCESS : PaymentStatus::PROCESS,
             'responseText' => 'ok',
         ]);
     }
@@ -175,5 +194,79 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
         if (strcmp(strtoupper($remoteToken), strtoupper($token)) !== 0) {
             throw new SignatureMismatchRequestException($params);
         }
+    }
+
+    /**
+     * @see https://github.com/tele-port/tele-port.github.io/blob/main/TportApi.php
+     * @param $method
+     * @param null $data
+     * @param string $httpType
+     * @param false $signed
+     * @return mixed
+     * @throws \Exception
+     */
+    protected function tportQuery($method, $data = null, $httpType = 'GET', $signed = false)
+    {
+        $url = rtrim($this->withdrawApiBaseUrl, '/') . '/v' . $this->withdrawApiVersion . '/' . trim($method, '/');
+        $headers = ['Content-Type' => 'application/json'];
+
+        if ($signed) {
+            $timestamp = time() * 1000;
+            $data['timestamp'] = $timestamp;
+        }
+        $query = is_array($data) ? json_encode($data) : $data;
+
+        if ($signed) {
+            $headers['X-TPORT-APIKEY'] = $this->withdrawApiKey;
+            $headers['Signature'] = $this->tportCreateSignature($query);
+        }
+
+        $opt = [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36',
+            CURLOPT_TIMEOUT => $this->withdrawApiTimeout,
+            CURLOPT_SSL_VERIFYPEER => 0,
+            CURLOPT_FILETIME => true,
+            CURLOPT_CUSTOMREQUEST => $httpType,
+        ];
+        if ($query) {
+            $opt += [
+                CURLOPT_POSTFIELDS => $query
+            ];
+        }
+
+        $curlHeaders = [];
+        foreach ($headers as $name => $value) {
+            $curlHeaders[] = $name . ': ' . $value;
+        }
+        $opt += [
+            CURLOPT_HTTPHEADER => $curlHeaders,
+        ];
+
+        $ch = curl_init();
+        curl_setopt_array($ch, $opt);
+        $r = curl_exec($ch);
+        $info = curl_getinfo($ch);
+        curl_close($ch);
+
+        $ret = json_decode($r, true);
+
+        if ($ret === false || $info['http_code'] != 200) {
+            throw new \Exception(__METHOD__ . ':' . $url . ' ' . $query . PHP_EOL . $r);
+        }
+
+        return $ret;
+    }
+
+    /**
+     * @see https://github.com/tele-port/tele-port.github.io/blob/main/TportApi.php
+     * @param $query
+     * @return string
+     */
+    protected function tportCreateSignature($query)
+    {
+        return hash_hmac('sha256', $query, $this->withdrawSecretKey, false);
     }
 }

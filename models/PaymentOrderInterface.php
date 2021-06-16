@@ -26,6 +26,16 @@ interface PaymentOrderInterface
     public function getProviderParams();
 
     /**
+     * @return string
+     */
+    public function getInCurrencyCode();
+
+    /**
+     * @return string
+     */
+    public function getOutCurrencyCode();
+
+    /**
      * @return int
      */
     public function getOutAmount();
