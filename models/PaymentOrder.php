@@ -38,7 +38,7 @@ use yii\web\IdentityInterface;
 class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
 {
     const PROVIDER_CALL_START = 'start';
-    const PROVIDER_CALL_CALLBACK = 'call';
+    const PROVIDER_CALL_CALLBACK = 'callback';
     const PROVIDER_CALL_WITHDRAW = 'withdraw';
 
     private ?array $_providerParams = null;
@@ -194,11 +194,7 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
             throw new InvalidConfigException("Not found payment provider '{$this->method->providerName}'");
         }
 
-        if (
-            !(PaymentModule::getInstance())->isManualWithdraw
-            && $callMethod === self::PROVIDER_CALL_WITHDRAW
-            && !($provider instanceof ProviderWithdrawInterface)
-        ) {
+        if ($callMethod === self::PROVIDER_CALL_WITHDRAW && !($provider instanceof ProviderWithdrawInterface)) {
             throw new InvalidConfigException("Provider '{$this->method->providerName}' does not support withdrawal operations");
         }
 
@@ -213,7 +209,8 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
         try {
             // Call provider method
             /** @var PaymentProcess $process */
-            $process = $provider->$callMethod($this, $request) ?: new PaymentProcess();
+            $process = method_exists($provider, $callMethod) ? $provider->$callMethod($this, $request) : null;
+            $process = $process ?: new PaymentProcess();
             $providerLog->responseRaw = $process->responseText;
 
             // Trigger event
