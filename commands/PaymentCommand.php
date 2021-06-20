@@ -40,7 +40,7 @@ class PaymentCommand extends Controller
                         ->select($attributes)
                         ->orderBy(['id' => SORT_DESC])
                         ->limit(20)
-                        ->andFilterWhere(['id' => StringHelper::explode($id)])
+                        ->andFilterWhere(['id' => $id ? StringHelper::explode($id) : null])
                         ->asArray()
                         ->all()
                 ),
