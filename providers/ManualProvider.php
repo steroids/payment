@@ -2,6 +2,8 @@
 
 namespace steroids\payment\providers;
 
+use steroids\payment\enums\PaymentStatus;
+use steroids\payment\interfaces\ProviderWithdrawInterface;
 use steroids\payment\models\PaymentOrderInterface;
 use yii\helpers\Url;
 use yii\helpers\ArrayHelper;
@@ -12,7 +14,7 @@ use steroids\payment\structure\PaymentProcess;
  * Class ManualProvider
  * @package steroids\payment\providers
  */
-class ManualProvider extends BaseProvider
+class ManualProvider extends BaseProvider implements ProviderWithdrawInterface
 {
     public ?string $startMessage = null;
 
@@ -41,6 +43,17 @@ class ManualProvider extends BaseProvider
     public function callback(PaymentOrderInterface $order, RequestInfo $request)
     {
         return new PaymentProcess();
+    }
+
+    /**
+     * @param PaymentOrderInterface $order
+     * @return PaymentProcess
+     */
+    public function withdraw(PaymentOrderInterface $order): PaymentProcess
+    {
+        return new PaymentProcess([
+            'newStatus' => PaymentStatus::SUCCESS,
+        ]);
     }
 
     /**
