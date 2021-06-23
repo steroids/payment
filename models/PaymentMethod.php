@@ -2,7 +2,6 @@
 
 namespace steroids\payment\models;
 
-use steroids\billing\models\BillingCurrency;
 use steroids\core\exceptions\ModelSaveException;
 use steroids\payment\exceptions\PaymentException;
 use steroids\payment\models\meta\PaymentMethodMeta;
@@ -41,11 +40,12 @@ class PaymentMethod extends PaymentMethodMeta
     }
 
     /**
-     * @return BillingCurrency[]
+     * @param bool $forceRefresh
+     * @return static[]
      */
-    public static function getAll()
+    public static function getAll(bool $forceRefresh = false)
     {
-        if (!static::$_instances) {
+        if (!static::$_instances || $forceRefresh) {
             static::$_instances = static::find()
                 ->where(['isEnable' => true])
                 ->indexBy('name')
