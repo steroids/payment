@@ -22,6 +22,14 @@ use yii\helpers\Url;
  */
 class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
 {
+    const PAYMENT_SYSTEM_CARD_RU = 'card ru';
+    const PAYMENT_SYSTEM_CARD_KZ = 'card kz';
+    const PAYMENT_SYSTEM_CARD_UA = 'card ua';
+    const PAYMENT_SYSTEM_P2P_CARD = 'P2pCard';
+
+    const METHOD_WITHDRAWAL = 'withdrawal';
+    const METHOD_TRANSFER_CARD = 'transfer-card';
+
     /**
      * Ваш e-mail, для которого создан данный SCI
      * @var string|null
@@ -107,6 +115,8 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
      */
     public function withdraw(PaymentOrderInterface $order): PaymentProcess
     {
+        $this->withdrawSystemName = ArrayHelper::getValue($order->methodParams, 'withdrawSystemName', $this->withdrawSystemName);
+
         // Uncomment for use cache:
         $paymentSystems = json_decode('{"success":1,"data":[{"id":"1","name":"Bitcoin"},{"id":"2","name":"PerfectMoney"},{"id":"3","name":"Dash"},{"id":"4","name":"Advcash"},{"id":"5","name":"Ethereum"},{"id":"6","name":"TetherUsd"},{"id":"7","name":"Litecoin"},{"id":"10","name":"BitcoinCash"},{"id":"11","name":"Payeer"},{"id":"12","name":"Teleport"},{"id":"13","name":"card ru"},{"id":"14","name":"card kz"},{"id":"15","name":"card ua"},{"id":"16","name":"P2pCard"}]}', true);
         //$paymentSystems = $this->tportQuery('payment-systems', null, 'GET', true);
@@ -118,16 +128,14 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
             return new PaymentProcess();
         }
 
-        $outCurrency = BillingCurrency::getByCode($order->getOutCurrencyCode());
-        $data = [
-            'wallet' => $this->withdrawWallet,
-            'card' => $order->methodParams['cardNumber'],
-            'amount' => $outCurrency->amountToFloat($order->getOutAmount()),
-            'system' => $systemId,
-        ];
+        $method = $this->isTransferCard() ? static::METHOD_TRANSFER_CARD : static::METHOD_WITHDRAWAL;
+        $data = $this->isTransferCard() ?
+            $this->getTransferCardData($order, $systemId) :
+            $this->getWithdrawalData($order, $systemId);
 
-        $order->log('POST transfer-card ' . Json::encode($data));
-        $result = $this->tportQuery('transfer-card', $data, 'POST', true);
+
+        $order->log("POST {$method} " . Json::encode($data));
+        $result = $this->tportQuery($method, $data, 'POST', true);
         $order->log('Response: ' . Json::encode($result));
 
         return new PaymentProcess([
@@ -168,6 +176,29 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
     public function resolveErrorMessage(RequestInfo $request)
     {
         return null;
+    }
+
+    protected function getTransferCardData(PaymentOrderInterface $order, int $systemId)
+    {
+        $outCurrency = BillingCurrency::getByCode($order->getOutCurrencyCode());
+        return [
+            'wallet' => $this->withdrawWallet,
+            'card' => $order->methodParams['cardNumber'],
+            'amount' => $outCurrency->amountToFloat($order->getOutAmount()),
+            'system' => $systemId,
+        ];
+    }
+
+    protected function getWithdrawalData(PaymentOrderInterface $order, int $systemId)
+    {
+        $outCurrency = BillingCurrency::getByCode($order->getOutCurrencyCode());
+        return [
+            'wallet' => $this->withdrawWallet,
+            'address' => $order->methodParams['address'],
+            'amount' => $outCurrency->amountToFloat($order->getOutAmount()),
+            'system' => $systemId,
+            'to_currency' => strtoupper($outCurrency->code),
+        ];
     }
 
     /**
@@ -268,5 +299,17 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
     protected function tportCreateSignature($query)
     {
         return hash_hmac('sha256', $query, $this->withdrawSecretKey, false);
+    }
+
+    private function isTransferCard()
+    {
+        $transferCardPaymentMap = [
+            static::PAYMENT_SYSTEM_CARD_RU,
+            static::PAYMENT_SYSTEM_CARD_KZ,
+            static::PAYMENT_SYSTEM_CARD_UA,
+            static::PAYMENT_SYSTEM_P2P_CARD,
+        ];
+
+        return in_array($this->withdrawSystemName, $transferCardPaymentMap);
     }
 }

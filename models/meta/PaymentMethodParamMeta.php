@@ -18,6 +18,7 @@ use \Yii;
  * @property string $createTime
  * @property string $updateTime
  * @property integer $methodId
+ * @property boolean $isVisible
  */
 abstract class PaymentMethodParamMeta extends Model
 {
@@ -39,7 +40,7 @@ abstract class PaymentMethodParamMeta extends Model
             [['name', 'type', 'label'], 'string', 'max' => 255],
             ['name', 'required'],
             ['typeValues', 'string'],
-            ['isRequired', 'steroids\\core\\validators\\ExtBooleanValidator'],
+            [['isRequired', 'isVisible'], 'steroids\\core\\validators\\ExtBooleanValidator'],
             [['min', 'max', 'methodId'], 'integer'],
         ];
     }
@@ -109,6 +110,11 @@ abstract class PaymentMethodParamMeta extends Model
                 'label' => Yii::t('steroids', 'Метод'),
                 'appType' => 'integer',
                 'isPublishToFrontend' => false
+            ],
+            'isVisible' => [
+                'label' => Yii::t('steroids', 'Отображать на сайте?'),
+                'appType' => 'boolean',
+                'defaultValue' => true
             ]
         ]);
     }
