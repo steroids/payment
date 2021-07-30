@@ -2,7 +2,7 @@
 
 namespace steroids\payment\providers;
 
-use app\billing\enums\CurrencyEnum;
+use steroids\billing\exceptions\BillingException;
 use steroids\billing\models\BillingCurrency;
 use steroids\core\structure\RequestInfo;
 use steroids\payment\enums\PaymentStatus;
@@ -61,7 +61,7 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
     /**
      * @var string
      */
-    public string $withdrawWallet;
+    public string $withdrawWallet = '11';
 
     /**
      * @var string
@@ -88,11 +88,23 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
      */
     public int $withdrawApiTimeout = 20;
 
+    public $currencyCodeMap = [
+        'usd' => 'USD',
+        'usdt' => 'USDT',
+    ];
+
     /**
-     * @inheritDoc
+     * @param PaymentOrderInterface $order
+     * @param RequestInfo $request
+     * @return PaymentProcess
+     * @throws BillingException
+     * @throws PaymentProcessException
      */
     public function start(PaymentOrderInterface $order, RequestInfo $request)
     {
+        $outCurrency = BillingCurrency::getByCode($order->getOutCurrencyCode());
+        $amount = $outCurrency->amountToFloat($order->getOutAmount());
+
         return new PaymentProcess([
             'request' => new RequestInfo([
                 'url' => Url::to(['/payment/payment/proxy-post'], true),
@@ -100,8 +112,8 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
                     '_url' => 'https://pay.tport.nl/ru',
                     't_account_email' => $this->accountEmail,
                     't_sci_name' => $this->sciName,
-                    't_amount' => round($order->getOutAmount() / 100, 2),
-                    't_currency' => $this->currency,
+                    't_amount' => $amount,
+                    't_currency' => $this->getInternalCurrency($order->getOutCurrencyCode()),
                     't_order_id' => $order->getId(),
                 ]
             ]),
@@ -112,6 +124,8 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
      * @see https://tele-port.github.io/#transfer-card
      * @param PaymentOrderInterface $order
      * @return PaymentProcess
+     * @throws PaymentProcessException
+     * @throws BillingException
      */
     public function withdraw(PaymentOrderInterface $order): PaymentProcess
     {
@@ -128,10 +142,19 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
             return new PaymentProcess();
         }
 
+        $outCurrency = BillingCurrency::getByCode($order->getOutCurrencyCode());
+        $data = [
+            'wallet' => $this->withdrawWallet,
+            'amount' => $outCurrency->amountToFloat($order->getOutAmount()),
+            'system' => $systemId,
+        ];
+
         $method = $this->isTransferCard() ? static::METHOD_TRANSFER_CARD : static::METHOD_WITHDRAWAL;
-        $data = $this->isTransferCard() ?
-            $this->getTransferCardData($order, $systemId) :
-            $this->getWithdrawalData($order, $systemId);
+        $data = array_merge($data,
+            $method === static::METHOD_TRANSFER_CARD
+                ? $this->getTransferCardData($order, $systemId)
+                : $this->getWithdrawalData($order, $systemId)
+        );
 
 
         $order->log("POST {$method} " . Json::encode($data));
@@ -178,26 +201,27 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
         return null;
     }
 
-    protected function getTransferCardData(PaymentOrderInterface $order, int $systemId)
+    /**
+     * @param PaymentOrderInterface $order
+     * @return array
+     */
+    protected function getTransferCardData(PaymentOrderInterface $order)
     {
-        $outCurrency = BillingCurrency::getByCode($order->getOutCurrencyCode());
         return [
-            'wallet' => $this->withdrawWallet,
             'card' => $order->methodParams['cardNumber'],
-            'amount' => $outCurrency->amountToFloat($order->getOutAmount()),
-            'system' => $systemId,
         ];
     }
 
-    protected function getWithdrawalData(PaymentOrderInterface $order, int $systemId)
+    /**
+     * @param PaymentOrderInterface $order
+     * @return array
+     * @throws PaymentProcessException
+     */
+    protected function getWithdrawalData(PaymentOrderInterface $order)
     {
-        $outCurrency = BillingCurrency::getByCode($order->getOutCurrencyCode());
         return [
-            'wallet' => $this->withdrawWallet,
             'address' => $order->methodParams['address'],
-            'amount' => $outCurrency->amountToFloat($order->getOutAmount()),
-            'system' => $systemId,
-            'to_currency' => strtoupper($outCurrency->code),
+            'to_currency' => $this->getInternalCurrency($order->getOutCurrencyCode()),
         ];
     }
 
@@ -299,6 +323,15 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
     protected function tportCreateSignature($query)
     {
         return hash_hmac('sha256', $query, $this->withdrawSecretKey, false);
+    }
+
+    protected function getInternalCurrency($currency)
+    {
+        if (!array_key_exists($currency, $this->currencyCodeMap)) {
+            throw new PaymentProcessException("Internal Teleport currency not found for: {$currency}");
+        }
+
+        return $this->currencyCodeMap[$currency];
     }
 
     private function isTransferCard()
