@@ -61,7 +61,7 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
     /**
      * @var string
      */
-    public string $withdrawWallet = '11';
+    public string $withdrawWallet;
 
     /**
      * @var string
