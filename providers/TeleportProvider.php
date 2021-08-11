@@ -59,6 +59,8 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
     public string $withdrawApiBaseUrl = 'https://api.tport.nl/rest/';
 
     /**
+     * Счет в определенной валюте в системе телепорта. С этого счета делается вывод
+     * Пример USDT-12345AB
      * @var string
      */
     public string $withdrawWallet;
@@ -143,6 +145,12 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
         }
 
         $outCurrency = BillingCurrency::getByCode($order->getOutCurrencyCode());
+
+        /**
+         * В случае метода withdrawal amount = это сумма, которая будет списана со счета wallet,
+         * преобразована в to_currency и отправлена на address.
+         * Если выводим 100 с рублевого счета в usdt, то, отправится ~1.3usdt
+         */
         $data = [
             'wallet' => $this->withdrawWallet,
             'amount' => $outCurrency->amountToFloat($order->getOutAmount()),
