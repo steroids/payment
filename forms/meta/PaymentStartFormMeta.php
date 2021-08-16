@@ -7,7 +7,7 @@ use \Yii;
 
 abstract class PaymentStartFormMeta extends FormModel
 {
-    public ?float $inAmount = null;
+    public $inAmount = null;
     public ?string $methodName = null;
     public ?string $accountName = null;
     public ?string $currencyCode = null;
