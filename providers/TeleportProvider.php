@@ -134,7 +134,7 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
         $this->withdrawSystemName = ArrayHelper::getValue($order->methodParams, 'withdrawSystemName', $this->withdrawSystemName);
 
         // Uncomment for use cache:
-        $paymentSystems = json_decode('{"success":1,"data":[{"id":"1","name":"Bitcoin"},{"id":"2","name":"PerfectMoney"},{"id":"3","name":"Dash"},{"id":"4","name":"Advcash"},{"id":"5","name":"Ethereum"},{"id":"6","name":"TetherUsd"},{"id":"7","name":"Litecoin"},{"id":"10","name":"BitcoinCash"},{"id":"11","name":"Payeer"},{"id":"12","name":"Teleport"},{"id":"13","name":"CardRu"},{"id":"14","name":"CardKz"},{"id":"15","name":"CardUa"},{"id":"16","name":"AlfaP2p"},{"id":"17","name":"P2p"},{"id":"18","name":"TetherTrc20"}]}"', true);
+        $paymentSystems = json_decode('{"success":1,"data":[{"id":"1","name":"Bitcoin"},{"id":"2","name":"PerfectMoney"},{"id":"3","name":"Dash"},{"id":"4","name":"Advcash"},{"id":"5","name":"Ethereum"},{"id":"6","name":"TetherUsd"},{"id":"7","name":"Litecoin"},{"id":"10","name":"BitcoinCash"},{"id":"11","name":"Payeer"},{"id":"12","name":"Teleport"},{"id":"13","name":"CardRu"},{"id":"14","name":"CardKz"},{"id":"15","name":"CardUa"},{"id":"16","name":"AlfaP2p"},{"id":"17","name":"P2p"},{"id":"18","name":"TetherTrc20"}]}', true);
         //$paymentSystems = $this->tportQuery('payment-systems', null, 'GET', true);
 
         $paymentSystemsMap = ArrayHelper::map($paymentSystems['data'], 'name', 'id');
@@ -168,6 +168,10 @@ class TeleportProvider extends BaseProvider implements ProviderWithdrawInterface
         $order->log("POST {$method} " . Json::encode($data));
         $result = $this->tportQuery($method, $data, 'POST', true);
         $order->log('Response: ' . Json::encode($result));
+
+        if (isset($result['error']['text'])) {
+            $order->setErrorMessage($result['error']['text']);
+        }
 
         return new PaymentProcess([
             'newStatus' => ArrayHelper::getValue($result, 'success') ? PaymentStatus::SUCCESS : PaymentStatus::PROCESS,
