@@ -127,6 +127,11 @@ class PaymentOrder extends PaymentOrderMeta implements PaymentOrderInterface
      */
     public function start(RequestInfo $request, $callMethod = self::PROVIDER_CALL_START)
     {
+        // Prevent restart of completed order
+        if (in_array($this->status, PaymentStatus::getFinishStatuses())) {
+            throw new PaymentException('Order has already been completed');
+        }
+
         if ($this->isWithdraw()) {
             if (PaymentModule::getInstance()->isManualWithdraw) {
                 $process = new PaymentProcess([
