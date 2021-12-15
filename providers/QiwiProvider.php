@@ -163,10 +163,8 @@ class QiwiProvider extends BaseProvider
         // When an even number is passed, it has the decimal part, but when decoded from the JSON the decimal part is deleted
         // It doesn't matter when calculating amounts, but it does matter when generating signature hash
         // So we add decimals - .00 - for even numbers
-        $amountAsString = (string) $request->getParam('payment.amount.value');
-        if (strpos($amountAsString, '.') === false) {
-            $amountAsString .= '.00';
-        }
+        $amount = (float)$request->getParam('payment.amount.value');
+        $amountAsString = number_format($amount, 2, '.', '');
 
         $values = implode('|', [
             $request->getParam('payment.paymentId'),
