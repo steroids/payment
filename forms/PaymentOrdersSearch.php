@@ -6,6 +6,7 @@ use app\auth\AuthModule;
 use app\billing\enums\CurrencyEnum;
 use steroids\auth\UserInterface;
 use steroids\billing\enums\BillingCurrencyRateDirectionEnum;
+use steroids\billing\models\BillingCurrency;
 use steroids\core\base\Model;
 use steroids\payment\enums\PaymentDirection;
 use steroids\payment\forms\meta\PaymentOrdersSearchMeta;
@@ -33,7 +34,7 @@ class PaymentOrdersSearch extends PaymentOrdersSearchMeta
             'outAmount' => fn(PaymentOrder $order) => $order->outCurrency->amountToFloat($order->outAmount),
             'outCurrencyCode',
             'outAmountRub' => function (PaymentOrder $order) {
-                return $order->outCurrency->amountToFloat(
+                return BillingCurrency::getByCode(CurrencyEnum::RUB)->amountToFloat(
                     $order->outCurrency->to(CurrencyEnum::RUB, $order->outAmount, $order->direction)
                 );
             },
