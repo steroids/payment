@@ -45,7 +45,7 @@ class PaymentOrdersSearch extends PaymentOrdersSearchMeta
                         $order->direction
                     ));
 
-                return $order->outCurrency->amountToFloat(
+                return BillingCurrency::getByCode(CurrencyEnum::RUB)->amountToFloat(
                     $order->outCurrency->to(CurrencyEnum::RUB, $commissionAmount, $order->direction)
                 );
             },
