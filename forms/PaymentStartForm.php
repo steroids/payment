@@ -35,6 +35,12 @@ class PaymentStartForm extends PaymentStartFormMeta
 
     public string $direction;
 
+    public static $paymentChargeOperationClass = PaymentChargeOperation::class;
+
+    public static $paymentWithdrawReserveOperationClass = PaymentWithdrawReserveOperation::class;
+
+    public static $paymentWithdrawRollbackOperationClass = PaymentWithdrawRollbackOperation::class;
+
     /**
      * @var UserInterface|IdentityInterface
      */
@@ -114,7 +120,7 @@ class PaymentStartForm extends PaymentStartFormMeta
                 // Add charge/withdraw item
                 if ($this->direction === PaymentDirection::CHARGE) {
                     $this->order->addOperation(
-                        new PaymentChargeOperation([
+                        new static::$paymentChargeOperationClass([
                             'fromAccount' => $this->method->systemAccount,
                             'toAccount' => $this->account,
                             'document' => $this->order,
@@ -122,7 +128,7 @@ class PaymentStartForm extends PaymentStartFormMeta
                     );
                 } else {
                     // Reserve amount
-                    (new PaymentWithdrawReserveOperation([
+                    (new static::$paymentWithdrawReserveOperationClass([
                         'fromAccount' => $this->account,
                         'toAccount' => $this->method->systemAccount,
                         'document' => $this->order,
@@ -130,7 +136,7 @@ class PaymentStartForm extends PaymentStartFormMeta
 
                     // Add rollback handler
                     $this->order->addFailureOperation(
-                        new PaymentWithdrawRollbackOperation([
+                        new static::$paymentWithdrawRollbackOperationClass([
                             'fromAccount' => $this->method->systemAccount,
                             'toAccount' => $this->account,
                             'document' => $this->order,
